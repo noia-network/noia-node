@@ -1,6 +1,6 @@
 # README #
 
-You would normally want to use [noia-node-gui][noia-node-gui] or [noia-node-terminal][noia-node-terminal].
+You would normally want to use noia-node-gui *(to be published)* or [noia-node-terminal][noia-node-terminal].
 
 #### Modules
 

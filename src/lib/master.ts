@@ -241,11 +241,15 @@ class Master extends EventEmitter {
   
       if (self._node && self._node.clientSockets) {
         self._node.clientSockets.on("resourceSent", (info: any) => {
-          self._wire.uploaded(info.resource.infoHash, info.resource.size, info.ip)
+          try {
+            self._wire.uploaded(info.resource.infoHash, info.resource.size, info.ip)
+          } catch (err) {
+            logger.warn("Could not send uploaded stats to master", err)
+          }
         })
       }
     } catch(er) {
-      console.log(er)
+      logger.warn("Registered event failure", er)
     }
   }
 }

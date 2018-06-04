@@ -89,7 +89,7 @@ class ClientSockets extends EventEmitter {
       function _closeWs () {
         return new Promise((resolve, reject) => {
           if (self.ws && self.listeningWs) {
-            if (self.ws.listening) {
+            if (self.ws.server.listening) {
               self.ws.close().then((info: any) => {
                 self.listeningWs = false
                 self.emit("closed", info)

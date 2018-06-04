@@ -18,7 +18,6 @@ class ClientSocketWs extends EventEmitter {
   public info: any
   public queue: Array<any>
   public sslConfig: any
-  public listening: any
   public _queueInterval: any
 
   constructor (node: any, port: any, ip: any, opts: any) {
@@ -64,45 +63,9 @@ class ClientSocketWs extends EventEmitter {
     } else {
       this.server = http.createServer()
     }
+
     this.wss = new WebSocket.Server({ server: this.server })
 
-    this.listening = false
-  
-    this._queueInterval = 3000
-  }
-
-  listen () {
-    const self = this
-  
-    // TODO: move to common.
-    // group resources to save network bandwith and don"t spam master
-    setInterval(() => {
-      const _queue = this.queue.slice()
-      this.queue = []
-      const groups: any = {}
-      if (_queue.length === 0) return
-      _queue.forEach((info: any) => {
-        const key = `${info.resource.infoHash}:${info.ip}`
-        if (!groups[key]) groups[key] = {
-          ip: info.ip,
-          resource: {
-            infoHash: info.resource.infoHash,
-            size: 0
-          }
-        }
-        groups[key].resource.size += parseFloat(info.resource.size)
-      })
-      Object.keys(groups).forEach(key => {
-        const info = groups[key]
-        const client = `client-ip=${info.ip}`
-        const resource = `resource=${info.resource.infoHash}`
-        const size = `size=${info.resource.size.toFixed(4)}`
-        const sizeMB = `size=${info.resource.size.toFixed(4)/1e6}`
-        logger.info(`WS sent to ${client} ${resource} ${sizeMB}`)     
-        this.emit("resourceSent", groups[key])
-      })
-    }, this._queueInterval)
-    
     this.wss.on("connection", (ws: any, req: any) => {
       ws._debugId = randombytes(4).toString("hex")
       ws.ip = ws._socket.remoteAddress.replace(/^::ffff:/, "")
@@ -134,13 +97,47 @@ class ClientSocketWs extends EventEmitter {
       })
     })
   
+    this._queueInterval = 3000
+
+    // TODO: move to common.
+    // group resources to save network bandwith and don"t spam master
+    setInterval(() => {
+      const _queue = this.queue.slice()
+      this.queue = []
+      const groups: any = {}
+      if (_queue.length === 0) return
+      _queue.forEach((info: any) => {
+        const key = `${info.resource.infoHash}:${info.ip}`
+        if (!groups[key]) groups[key] = {
+          ip: info.ip,
+          resource: {
+            infoHash: info.resource.infoHash,
+            size: 0
+          }
+        }
+        groups[key].resource.size += parseFloat(info.resource.size)
+      })
+      Object.keys(groups).forEach(key => {
+        const info = groups[key]
+        const client = `client-ip=${info.ip}`
+        const resource = `resource=${info.resource.infoHash}`
+        const size = `size=${info.resource.size.toFixed(4)}`
+        const sizeMB = `size=${info.resource.size.toFixed(4)/1e6}`
+        logger.info(`WS sent to ${client} ${resource} ${sizeMB}`)     
+        this.emit("resourceSent", groups[key])
+      })
+    }, this._queueInterval)
+  }
+
+  listen () {
+    const self = this
+        
     this.server.listen(this.port, this.ip, (err: any) => {
       if (err) {
         throw new Error(err)
       }
   
       this.info = this.server.address()
-      this.listening = true
       this.emit("listening", {
         type: this.type,
         port: this.info.port,
@@ -228,7 +225,7 @@ class ClientSocketWs extends EventEmitter {
     }
 
     return new Promise((resolve, reject) => {
-      if (this.listening) {
+      if (this.server.listening) {
         _close(resolve)
       } else {
         this.on("listening", () => {

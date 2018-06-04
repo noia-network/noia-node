@@ -30,10 +30,10 @@ class Node extends EventEmitter {
     this.settings = new Settings(opts)
     this.statistics = new Statistics()
     
-    this.storageSpace = new StorageSpace(this.settings.get(Options.storageDir), this.settings.get(Options.storageSize))
     this.master = new Master(this)
     this.clientSockets = new ClientSockets(this, this.getClientSocketsOptions(this.settings.get.bind(this.settings)))
     this.contentsClient = new ContentsClient(this.master, this.settings.get(Options.storageDir))
+    this.storageSpace = new StorageSpace(this.settings.get(Options.storageDir), this.settings.get(Options.storageSize))
     this.wallet = new Wallet(this, this.settings.get(Options.walletMnemonic), this.settings.get(Options.walletProviderUrl))
     if (this.settings.get(Options.controller)) {
       this.nodeController = new NodeController(this)

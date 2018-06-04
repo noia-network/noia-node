@@ -21,10 +21,7 @@ class StorageSpace {
   
     self.allocated = storageAllocated
     self.storageDir = path.resolve(storageDir)
-    self.dataDir = path.join(storageDir, "data/")
     self.metadataPath = path.join(storageDir, "metadata.json")
-  
-    if (!fs.existsSync(self.dataDir)) mkdirp.sync(self.dataDir)
   }
 
   total () {

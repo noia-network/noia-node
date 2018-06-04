@@ -30,6 +30,7 @@ class StorageSpace {
     return self.allocated
   }
 
+  // TODO: unused?
   used () {
     const self = this
   
@@ -54,7 +55,8 @@ class StorageSpace {
         resolve({
           total,
           available,
-          used
+          // exclude block size and metadata size not to confuse users
+          used: used - fs.statSync(self.storageDir).blksize - fs.statSync(self.metadataPath).size
         })
       })
     })

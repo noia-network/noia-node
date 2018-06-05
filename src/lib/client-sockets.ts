@@ -7,7 +7,6 @@ class ClientSockets extends EventEmitter {
   public opts: any
   public _node: Node
   public listeningHttp: boolean = false
-  public listeningWs: boolean = false
   public http: ClientSocketHttp
   public ws: ClientSocketWs
 
@@ -46,9 +45,7 @@ class ClientSockets extends EventEmitter {
       this.http.listen()
     }
   
-    if (this.opts.ws && !this.listeningWs) {
-      // TODO check if already listening.
-      this.listeningWs = true
+    if (this.opts.ws && !this.ws.server.listening) {
       this.ws.listen()
     }
   }
@@ -88,17 +85,15 @@ class ClientSockets extends EventEmitter {
   
       function _closeWs () {
         return new Promise((resolve, reject) => {
-          if (self.ws && self.listeningWs) {
+          if (self.ws && self.ws.server.listening) {
             if (self.ws.server.listening) {
               self.ws.close().then((info: any) => {
-                self.listeningWs = false
                 self.emit("closed", info)
                 resolve(info)
               })
             } else {
               self.ws.once("listening", () => {
                 if (self.ws) self.ws.close().then((info: any) => {
-                  self.listeningWs = false
                   self.emit("closed", info)
                   resolve(info)
                 })

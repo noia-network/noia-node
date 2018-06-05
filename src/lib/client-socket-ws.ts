@@ -211,7 +211,7 @@ class ClientSocketWs extends EventEmitter {
 
   close () {
     const _close = (resolve: any) => {
-      this.wss.clients.forEach((ws: any) => ws.close());
+      this.wss.clients.forEach((ws: any) => ws.close())
       this.server.close(() => {
         const info = {
           type: this.type,

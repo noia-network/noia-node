@@ -46,6 +46,9 @@ class Node extends EventEmitter {
       this.contentsClient.start()
       this.clientSockets.listen()
     })
+    this.master.on("closed", info => {
+      this.stop()
+    })
 
     // update total uploaded and uploaded statistics
     this.contentsClient.on("downloaded", (chunkSize: number) => {

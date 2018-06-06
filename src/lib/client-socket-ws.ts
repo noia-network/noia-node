@@ -20,10 +20,10 @@ class ClientSocketWs extends EventEmitter {
   public sslConfig: any
   public _queueInterval: any
 
-  constructor (node: any, port: any, ip: any, opts: any) {
+  constructor (node: Node, port: any, ip: any, opts: any) {
     super()
     this.ssl = false
-    this.port = port || "6868"
+    this.port = port || node.settings.get(node.settings.Options.wsPort)
     this.ip = ip || "0.0.0.0"
     this._node = node
     this.server = null

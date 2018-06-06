@@ -10,14 +10,14 @@ class ClientSockets extends EventEmitter {
   public http: ClientSocketHttp
   public ws: ClientSocketWs
 
-  constructor (node: any, opts: any) {
+  constructor (node: Node, opts: any) {
     super()
   
     this.opts = opts || {}
   
     this._node = node
   
-    this.http = new ClientSocketHttp(this.opts.http.port, this.opts.http.ip)
+    this.http = new ClientSocketHttp(this._node, this.opts.http.port, this.opts.http.ip)
     this.ws = new ClientSocketWs(this._node, this.opts.ws.port, this.opts.ws.ip, this.opts.ws)
   
     if (this.opts.http) {

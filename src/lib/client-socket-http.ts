@@ -1,8 +1,9 @@
 import EventEmitter from "events"
-const logger = require("./logger")
+import Node from "../index"
 const express = require("express")
 const fs = require("fs")
 const http = require("http")
+const logger = require("./logger")
 const mime = require("mime-types")
 const path = require("path")
 
@@ -30,10 +31,10 @@ class ClientSocketHttp extends EventEmitter {
   public _queueInterval: any
   public _staticDir: any
 
-  constructor (port: any, ip: any) {
+  constructor (node: Node, port: any, ip: any) {
     super()
 
-    this.port = port || "6767"
+    this.port = port || node.settings.get(node.settings.Options.httpPort)
     this.ip = ip || "0.0.0.0"
     this.app = app
     this.server = null

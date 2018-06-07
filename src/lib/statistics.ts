@@ -24,9 +24,9 @@ export class Statistics extends EventEmitter {
   public ready: boolean
   public Options = StatisticsOptions
 
-  constructor () {
+  constructor (filePath: string) {
     super()
-    this.filePath = path.resolve("statistics.json")
+    this.filePath = path.resolve(filePath ? filePath : "statistics.json")
 
     logger.info(`Statistics filepath=${this.filePath}`)
 

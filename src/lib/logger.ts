@@ -23,7 +23,7 @@ const options = {
   exitOnError: false,
 }
 
-if (config.LOG_FILES_SILENT !== "yes") {
+if (config.LOG_TO_FILE === "yes") {
   options.transports.push(new winston.transports.File({
     filename: "noia-node.log",
     // label: path,

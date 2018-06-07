@@ -147,4 +147,4 @@ TODO: add SSL docs.
 
 ### Logging to log file
 
-Node by default logs activiy to `noia-node.log` file. Create `.env` file and add line `LOG_FILES_SILENT=no` to disable it.
+Node by default doesn't log activiy to file. To log to file `noia-node.log`, create `.env` file and add line `LOG_TO_FILE=yes` to enable it.

@@ -1,6 +1,6 @@
 # README #
 
-You would normally want to use noia-node-gui *(to be published)* or [noia-node-terminal][noia-node-terminal].
+You would normally want to use [noia-node-gui][noia-node-gui] or [noia-node-terminal][noia-node-terminal].
 
 #### Modules
 
@@ -8,14 +8,14 @@ You would normally want to use noia-node-gui *(to be published)* or [noia-node-t
 |---|---|
 | **[noia-node][noia-node]** | **core noia node (this module)**
 | [noia-node-contents-client][noia-node-contents-client] | used to manage contents for noia-node
-| `*`noia-node-gui *(to be published)* | node graphical user interface
+| `*`[noia-node-gui][noia-node-gui] | node graphical user interface
 | `*`[noia-node-terminal][noia-node-terminal] | headless (terminal) node
 
 `*` - example modules how to use noia-node internally and create headless or node with GUI.
 
 [noia-node]: https://github.com/noia-network/noia-node
 [noia-node-contents-client]: https://github.com/noia-network/noia-node-contents-client
-[//]: # ([noia-node-gui]: *to be published*)
+[noia-node-gui]: https://github.com/noia-network/noia-node-gui
 [noia-node-terminal]: https://github.com/noia-network/noia-node-terminal
 
 #### Sample code

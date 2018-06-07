@@ -1,5 +1,4 @@
-import fs from "fs";
-const getFolderSize = require("get-folder-size") // actual size, not on disk
+import fs from "fs"
 const logger = require("./logger")
 const mkdirp = require("mkdirp")
 const path = require("path")
@@ -32,33 +31,16 @@ class StorageSpace {
 
   // TODO: unused?
   used () {
-    const self = this
-  
-    return new Promise((resolve, reject) => {
-      getFolderSize(self.storageDir, (err: any, size: any) => {
-        if (err) return reject(new Error(err))
-        resolve(size)
-      })
-    })
+    return getSize(this.storageDir)
   }
-
+   
+  // based on https://stackoverflow.com/a/34017887
   stats () {
-    const self = this
-  
-    return new Promise((resolve, reject) => {
-      getFolderSize(self.storageDir, (err: any, size: any) => {
-        if (err) return reject(new Error(err))
-        const leftBytes = self.allocated - size
-        const available = leftBytes > 0 ? leftBytes : 0
-        const used = size
-        const total = self.allocated
-        resolve({
-          total,
-          available,
-          // exclude block size and metadata size not to confuse users
-          used: used - fs.statSync(self.storageDir).blksize - fs.statSync(self.metadataPath).size
+    return new Promise((resolve) => {
+      getSize(this.storageDir)
+        .then((size) => {
+          return resolve(size - fs.statSync(this.metadataPath).size)
         })
-      })
     })
   }
   
@@ -72,7 +54,7 @@ class StorageSpace {
   
     const dirs = [ self.dataDir ]
     function clearDir (directory: any) {
-      fs.readdir(directory, (err, files) => {
+      fs.readdir(directory, (err: Error, files) => {
         if (err) throw err
         for (const file of files) {
           rimraf.sync(path.join(directory, file))
@@ -84,6 +66,47 @@ class StorageSpace {
       clearDir(path.join(self.storageDir, dir))
     })
   }
+}
+
+function getSize (dirPath: any) {      
+  return getStat(dirPath).then((stat: any) => {  
+    if (stat.isFile()) { // if file return size directly
+      return stat.size
+    } else {
+      return getFiles(dirPath).then((files: any) => { // getting list of inner files
+        var promises = files.map((file: any) => {
+          return path.join(dirPath, file)  
+        }).map(getSize) // recursively getting size of each file
+        return Promise.all(promises)   
+      }).then((childElementSizes) => { // success callback once all the promise are fullfiled i. e size is collected 
+          var dirSize = 0
+          childElementSizes.forEach((size: any) => { // iterate through array and sum things
+              dirSize += size
+          })
+          return dirSize
+      })
+    }    
+  })
+}
+
+// promisified get stats method
+function getStat (filePath: any) {
+  return new Promise((resolve, reject) => {
+    fs.lstat(filePath, (err: Error, stat) => {
+      if (err) return reject(err)
+      resolve(stat)
+    })
+  })
+}
+
+// promisified get files method
+function getFiles (dir: string) {
+  return new Promise((resolve, reject) => {
+    fs.readdir(dir, (err: Error, stat) => {
+      if(err) return reject(err)
+      resolve(stat)
+    })
+  })
 }
 
 export = StorageSpace

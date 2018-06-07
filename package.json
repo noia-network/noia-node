@@ -38,7 +38,6 @@
     "express": "^4.16.3",
     "external-ip": "^2.0.3",
     "fs-chunk-store": "^1.6.5",
-    "get-folder-size": "^1.0.1",
     "immediate-chunk-store": "^1.0.8",
     "jsonfile": "^4.0.0",
     "logdna-winston": "^1.0.0",

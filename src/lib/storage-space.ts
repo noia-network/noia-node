@@ -39,7 +39,15 @@ class StorageSpace {
     return new Promise((resolve) => {
       getSize(this.storageDir)
         .then((size) => {
-          return resolve(size - fs.statSync(this.metadataPath).size)
+          const used = size - fs.statSync(this.metadataPath).size
+          const leftBytes = this.allocated - used
+          const available = leftBytes > 0 ? leftBytes : 0
+          const total = this.allocated
+          return resolve({
+            total,
+            available,
+            used
+          })
         })
     })
   }

@@ -28,7 +28,7 @@ class Node extends EventEmitter {
   
     this.opts = opts || {}
     this.settings = new Settings(opts)
-    this.statistics = new Statistics(opts.statisticsPath)
+    this.statistics = new Statistics(opts)
     
     this.master = new Master(this)
     this.clientSockets = new ClientSockets(this, this.getClientSocketsOptions(this.settings.get.bind(this.settings)))

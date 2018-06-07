@@ -34,6 +34,7 @@ export enum Options {
 export class Settings extends EventEmitter {
   public opts: {
     isHeadless: boolean,
+    userDataPath?: string,
     settingsPath: string,
     storageDir: string,
     storageSize: string,
@@ -66,7 +67,9 @@ export class Settings extends EventEmitter {
   constructor (opts: any) {
     super()
     this.opts = opts || {}
-    this.file = path.resolve(this.opts.settingsPath ? this.opts.settingsPath : "settings.json")
+    this.opts.userDataPath = typeof this.opts.userDataPath !== "string" ? "" : this.opts.userDataPath
+
+    this.file = path.resolve(this.opts.settingsPath ? this.opts.settingsPath : path.join(this.opts.userDataPath, "settings.json"))
 
     logger.info(`Configuration filepath=${this.file}`)
 
@@ -86,7 +89,7 @@ export class Settings extends EventEmitter {
     this.update(Options.isHeadless, this.opts.isHeadless, false)
     this.update(Options.skipBlockchain, this.opts.skipBlockchain, true)
     const skipBlockchain = this.get(Options.skipBlockchain)
-    this.update(Options.storageDir, this.opts.storageDir, path.resolve("./storage"))
+    this.update(Options.storageDir, this.opts.storageDir, path.resolve(this.opts.userDataPath, "./storage"))
     this.update(Options.storageSize, this.opts.storageSize, "104857600")
     this.update(Options.domain, this.opts.domain, "")
     this.update(Options.ssl, this.opts.ssl, false)

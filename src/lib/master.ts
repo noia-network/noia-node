@@ -6,21 +6,8 @@ const Wire = require("noia-protocol")
 const logger = require("./logger")
 const path = require("path")
 const randombytes = require("randombytes")
-const extIP = require("external-ip")
 const dotenv = require("dotenv").config({ path: path.resolve(process.cwd(), ".env") })
 const config = dotenv.error ? {} : dotenv.parsed
-
-const getIP = extIP({
-  replace: true,
-  services: [
-    "http://icanhazip.com/",
-    "http://ident.me/",
-    "http://ifconfig.co/x-real-ip",
-    "http://ifconfig.io/ip"
-  ],
-  timeout: 600,
-  getIP: "parallel"
-})
 
 class Master extends EventEmitter {
   public address: undefined|null|string|WebSocket
@@ -108,28 +95,25 @@ class Master extends EventEmitter {
         })
       } else {
         logger.info("Skip blockchain, connect straight to master...")
-        getIP((err: Error, ip: string) => {
-          if (err) {
-            logger.error(err)
-          }
-          let nodeClientData: any = {}
-          nodeClientData.info = {}
-          if (this._node && this._node.settings) {
-            nodeClientData.info["interface"] = this._node.settings.get(this._node.settings.Options.isHeadless) ? "terminal" : "gui"
-            nodeClientData.info["node_ip"] = ip
-            nodeClientData.info["node_ws_port"] = this._node.settings.get(this._node.settings.Options.wsPort)
-            nodeClientData.info["node_domain"] = this._node.settings.get(this._node.settings.Options.domain)
-            // TODO: should wallet address be send if blockchain is used?
-            nodeClientData.info["node_wallet_address"] = this._node.settings.get(this._node.settings.Options.walletAddress)
-          }
-          logger.info("Creating wire...", nodeClientData)
-          self._wire = new Wire(self.address, msg, nodeClientData, (fromMsg: string, fromMsgSigned: string) => {
-            return new Promise((resolve) => {
-              resolve(true)
-            })
-          }, this._node.settings.get(this._node.settings.Options.nodeId), this._node.VERSION)
-          _listeners()
-        })
+        let nodeClientData: any = {}
+        nodeClientData.info = {}
+        if (this._node && this._node.settings) {
+          nodeClientData.info["interface"] = this._node.settings.get(this._node.settings.Options.isHeadless) ? "terminal" : "gui"
+          // If node public IP is empty or invalid, master should resolve it on its own
+          nodeClientData.info["node_ip"] = this._node.settings.get(this._node.settings.Options.publicIp)
+          nodeClientData.info["node_ws_port"] = this._node.settings.get(this._node.settings.Options.wsPort)
+          nodeClientData.info["node_domain"] = this._node.settings.get(this._node.settings.Options.domain)
+          // TODO: should wallet address be send if blockchain is used?
+          nodeClientData.info["node_wallet_address"] = this._node.settings.get(this._node.settings.Options.walletAddress)
+        }
+        logger.info("Creating wire...", nodeClientData)
+        // TODO: handshake given public IP address?
+        self._wire = new Wire(self.address, msg, nodeClientData, (fromMsg: string, fromMsgSigned: string) => {
+          return new Promise((resolve) => {
+            resolve(true)
+          })
+        }, this._node.settings.get(this._node.settings.Options.nodeId), this._node.VERSION)
+        _listeners()
       }
 
       function _listeners() {

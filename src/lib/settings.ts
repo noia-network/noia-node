@@ -14,6 +14,7 @@ export enum Options {
   privateKeyPath = "ssl.privateKeyPath",
   crtPath = "ssl.crtPath",
   crtBundlePath = "ssl.crtBundlePath",
+  publicIp = "publicIp",
   http = "sockets.http",
   httpIp = "sockets.http.ip",
   httpPort = "sockets.http.port",
@@ -43,6 +44,7 @@ export class Settings extends EventEmitter {
     privateKeyPath: string,
     crtPath: string,
     crtBundlePath: string,
+    publicIp: string,
     http: boolean,
     httpIp: string,
     httpPort: string,
@@ -96,6 +98,7 @@ export class Settings extends EventEmitter {
     this.update(Options.privateKeyPath, this.opts.privateKeyPath, "")
     this.update(Options.crtPath, this.opts.crtPath, "")
     this.update(Options.crtBundlePath, this.opts.crtBundlePath, "")
+    this.update(Options.publicIp, this.opts.publicIp, "")
     this.update(Options.http, this.opts.http, false)
     this.update(Options.httpIp, this.opts.httpIp, "0.0.0.0")
     this.update(Options.httpPort, this.opts.httpPort, "6767")

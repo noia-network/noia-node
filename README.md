@@ -123,6 +123,7 @@ Node configuration can be supplied to `Node` object or set via `settings.json` f
 | yes | sslPrivateKeyPath | ssl.privateKeyPath | string | empty | Path to SSL private key.
 | yes | sslCrtPath | ssl.crtPath | string | empty | Path to certificate.
 | yes | sslCrtBundlePath | ssl.crtBundlePath | string | empty | Path to certificate bundle.
+| no | publicIp | publicIp | string | empty | Public IP that master must use. If empty, master must resolve IP by itself.
 | no | http | sockets.http | boolean | false | True to deliver content via HTTP protocol.
 | no | httpIp | sockets.http.ip | string | 0.0.0.0 | HTTP listening ip.
 | no | httpPort | sockets.http.port | number | 6767 | HTTP listening port.

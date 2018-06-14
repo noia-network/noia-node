@@ -64,6 +64,14 @@ class ClientSocketWs extends EventEmitter {
       this.server = http.createServer()
     }
 
+    this.server.on("error", (err: any) => {
+      if (err.code === 'EADDRINUSE') {
+        // handles wss.on("error")
+      } else {
+        throw new err // to be discovered
+      }
+    })
+
     this.wss = new WebSocket.Server({ server: this.server })
 
     this.wss.on("connection", (ws: any, req: any) => {
@@ -95,6 +103,10 @@ class ClientSocketWs extends EventEmitter {
         logger.info(`[${ws._debugId}] closed`)
         this.emit("connections", this.wss.clients.size)
       })
+    })
+    this.wss.on("error", (err) => {
+      logger.error("Coult not create WebSocket server", err)
+      this.emit("error", err)
     })
   
     this._queueInterval = 3000
@@ -131,22 +143,22 @@ class ClientSocketWs extends EventEmitter {
 
   listen () {
     const self = this
-        
-    this.server.listen(this.port, this.ip, (err: any) => {
-      if (err) {
-        throw new Error(err)
-      }
-  
-      this.info = this.server.address()
-      this.emit("listening", {
-        type: this.type,
-        port: this.info.port,
-        ip: this.info.address,
-        family: this.info.family,
-        ssl: this.ssl
+      this.server.listen(this.port, this.ip, (err: any) => {
+        if (err) {
+          console.log("received listen err")
+          throw new Error(err)
+        }
+    
+        this.info = this.server.address()
+        this.emit("listening", {
+          type: this.type,
+          port: this.info.port,
+          ip: this.info.address,
+          family: this.info.family,
+          ssl: this.ssl
+        })
+        logger.info(`Listening for clients connections type=${ this.ssl === true ? "wss" : "ws" } ip=${this.info.address} port=${this.info.port} family=${this.info.family}`)
       })
-      logger.info(`Listening for clients connections type=${ this.ssl === true ? "wss" : "ws" } ip=${this.info.address} port=${this.info.port} family=${this.info.family}`)
-    })
   }
 
   handleMessage (ws: any, params: any) {

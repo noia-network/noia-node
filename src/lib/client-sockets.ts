@@ -32,6 +32,9 @@ class ClientSockets extends EventEmitter {
       this.ws.on("listening", (info: any) => {
         this.emit("listening", info)
       })
+      this.ws.on("error", (err) => {
+        this.emit("error", err)
+      })
       this.ws.on("resourceSent", (info: any) => {
         this.emit("resourceSent", info)
       })

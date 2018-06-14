@@ -2,7 +2,7 @@ import EventEmitter from "events"
 import Node from "../index"
 const express = require("express")
 const fs = require("fs")
-const http = require("http")
+import http from "http"
 const logger = require("./logger")
 const mime = require("mime-types")
 const path = require("path")
@@ -37,7 +37,7 @@ class ClientSocketHttp extends EventEmitter {
     this.port = port || node.settings.get(node.settings.Options.httpPort)
     this.ip = ip || "0.0.0.0"
     this.app = app
-    this.server = null
+    this.server = http.createServer(app)
     this.type = "http"
     this.info = null
     this.queue = []
@@ -47,6 +47,10 @@ class ClientSocketHttp extends EventEmitter {
     this.static = null
   
     this._queueInterval = 3000
+
+    this.server.on("error", (err: any) => {
+      this.emit("error", err)
+    })
   }
 
   // TODO: remove deprecated route.
@@ -152,7 +156,7 @@ class ClientSocketHttp extends EventEmitter {
       })
     }
   
-    this.server = this.app.listen(this.port, this.ip, () => {
+    this.server.listen(this.port, this.ip, () => {
       this.listening = true
       this.info = this.server.address()
       const listeningInfo = {
@@ -162,7 +166,7 @@ class ClientSocketHttp extends EventEmitter {
         family: this.info.family
       }
       this.emit("listening", listeningInfo)
-      logger.info("Listening for WS requests on port 7676", listeningInfo)
+      logger.info("Listening for HTTP requests on port 7676", listeningInfo)
     })
   }
 

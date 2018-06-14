@@ -6,7 +6,6 @@ import Node from "../index"
 class ClientSockets extends EventEmitter {
   public opts: any
   public _node: Node
-  public listeningHttp: boolean = false
   public http: ClientSocketHttp
   public ws: ClientSocketWs
 
@@ -23,6 +22,9 @@ class ClientSockets extends EventEmitter {
     if (this.opts.http) {
       this.http.on("listening", (info: any) => {
         this.emit("listening", info)
+      })
+      this.http.on("error", (err) => {
+        this.emit("error", err)
       })
       this.http.on("resourceSent", (info: any) => {
         this.emit("resourceSent", info)
@@ -42,9 +44,7 @@ class ClientSockets extends EventEmitter {
   }
 
   listen () {
-    if (this.opts.http && !this.listeningHttp) {
-      // TODO: check if already listening.
-      this.listeningHttp = true
+    if (this.opts.http && !this.http.listening) {
       this.http.listen()
     }
   
@@ -64,17 +64,15 @@ class ClientSockets extends EventEmitter {
   
       function _closeHttp () {
         return new Promise((resolve, reject) => {
-          if (self.http && self.listeningHttp) {
+          if (self.http && self.http.listening) {
             if (self.http.listening) {
               self.http.close().then((info: any) => {
-                self.listeningHttp = false
                 self.emit("closed", info)
                 resolve(info)
               })
             } else {
               self.http.once("listening", (info: any) => {
                 if (self.http) self.http.close().then((info: any) => {
-                  self.listeningHttp = false
                   self.emit("closed", info)
                   resolve(info)
                 })

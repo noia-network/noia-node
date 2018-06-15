@@ -46,6 +46,10 @@ class Node extends EventEmitter {
       this.contentsClient.start()
       this.clientSockets.listen()
     })
+    this.master.on("error", (err) => {
+      this.stop()
+      this.emit("error", err)
+    })
     this.master.on("closed", info => {
       this.stop()
     })

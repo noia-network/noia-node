@@ -123,6 +123,10 @@ class Master extends EventEmitter {
         self._wire.once("closed", (info: any) => {
           self._onClosed(info)
         })
+        self._wire.once("error", (err: any) => {
+          logger.error("Could not connect to master", err)
+          self.emit("error", err)
+        })
         self._wire.handshakeResult()
           .then((info: any) => {
             if (!self.connecting) return

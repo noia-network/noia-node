@@ -131,7 +131,8 @@ Node configuration can be supplied to `Node` object or set via `settings.json` f
 | no | wsIp | sockets.ws.ip | string | 0.0.0.0 | WS listening ip.
 | no | wsPort | sockets.ws.port | number | 7676 | WS listening port.
 | no | walletMnemonic | wallet.mnemonic | string | generated | Wallet mnemonic.
-| yes | walletProviderUrl | wallet.providerUrl | string | empty | Wallet provider url. 
+| no | walletAddress | wallet.address | string | empty | Wallet address. If `skipBlockchain` is turned on this setting takes effect, else `walletMnemonic` is used to retrieve wallet address.
+| if not skipBlockchain | walletProviderUrl | wallet.providerUrl | string | empty | Wallet provider url. 
 | no | client | client | string | empty | Node client address.
 | if skipBlockchain | masterAddress | masterAddress | string | empty | Master address to connect to if skipping blockchain.
 | no | whitelistMasters | whitelist.masters | array<string> | ["csl-masters.noia.network"] | Masters whitelist. If empty array then all masters addresses are available.
@@ -141,6 +142,8 @@ Node configuration can be supplied to `Node` object or set via `settings.json` f
 
 
 `*` mandatory to override value to connect to NOIA master and serve content using WS protocol (default setup).
+
+**Note**: `skipBlockchain` is turned on by default while we develop blockchain network.
 
 **Note**: On startup, node is registered on blockchain and client address (`client`) is saved in `settings.json`. If any of `domain`, `sockets.ws.port` or external IP information property changes, `client` should be regenerated. To do so, simply remove `client` property from `settings.json` and it will registern node client on blockchain with updated values.
 

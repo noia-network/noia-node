@@ -1,6 +1,6 @@
 {
   "name": "noia-node",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "NOIA Node core.",
   "main": "dist/index.js",
   "scripts": {

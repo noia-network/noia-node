@@ -115,7 +115,7 @@ Node configuration can be supplied to `Node` object or set via `settings.json` f
 | no | settingsPath | N/A | string | ./settings.json | Path to `settings.json`.
 | no | statisticsPath | N/A | string | ./statistics.json | Path to `statistics.json`.
 | no | userDataPath | N/A | string | empty | Path to user user data folder. If specified, default `settings.json` and/or `statistics.json` will be saved to user data folder.
-| no | isHeadless | isHeadless | boolean | true | False if node GUI. 
+| no | isHeadless | isHeadless | boolean | true | False if node GUI.
 | no | storageDir | storage.dir | string | ./storage | Path to storage directory.
 | no | storageSize | storage.size | number | 104857600 | Size of disk space available to use for caching purposes.
 | yes | domain | domain | string | empty | Domain SSL is valid for.
@@ -132,11 +132,13 @@ Node configuration can be supplied to `Node` object or set via `settings.json` f
 | no | wsPort | sockets.ws.port | number | 7676 | WS listening port.
 | no | walletMnemonic | wallet.mnemonic | string | generated | Wallet mnemonic.
 | no | walletAddress | wallet.address | string | empty | Wallet address. If `skipBlockchain` is turned on this setting takes effect, else `walletMnemonic` is used to retrieve wallet address.
-| if not skipBlockchain | walletProviderUrl | wallet.providerUrl | string | empty | Wallet provider url. 
+| if not skipBlockchain | walletProviderUrl | wallet.providerUrl | string | empty | Wallet provider url.
 | no | client | client | string | empty | Node client address.
 | if skipBlockchain | masterAddress | masterAddress | string | empty | Master address to connect to if skipping blockchain.
 | no | whitelistMasters | whitelist.masters | array<string> | ["csl-masters.noia.network"] | Masters whitelist. If empty array then all masters addresses are available.
 | no | controller | controller | boolean | false | RESTful node controller. Listens by default on 9000 port when turned on. |
+| no | controllerIp | controllerIp | string | 127.0.0.1 | Node controller IP |
+| no | controllerPort | controllerPort | string | 9000 | Node controller port |
 | no | skipBlockchain | skipBlockchain | boolean | true | Connect directy to master using masterAddress (ignores whitelist) if turned on.
 | no | nodeId | nodeId | string | generated | Node identifier if skipping blockchain.
 

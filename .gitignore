@@ -3,3 +3,6 @@ node_modules/
 .env
 dist
 bin/settings.json
+settings.json
+statistics.json
+tests/tmp-node

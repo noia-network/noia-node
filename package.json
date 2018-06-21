@@ -60,6 +60,12 @@
         "winston": "^2.4.1",
         "ws": "^5.0.0"
     },
+    "files": [
+        "dist",
+        "**/*.md",
+        "@types",
+        "!/examples"
+    ],
     "jest": {
         "transform": {
             "^.+\\.(ts|tsx)?$": "ts-jest"

@@ -21,6 +21,10 @@ class NodeController {
   public node: any
 
   constructor (node: any) {
+    router.route("/statistics")
+      .get((req: any, res: any, next: any) => {
+        res.json(node.statistics.get())
+      })
     router.route("/contents")
       .get((req: any, res: any, next: any) => {
         res.json(node.contentsClient.getInfoHashes())

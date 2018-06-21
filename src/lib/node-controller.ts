@@ -6,6 +6,7 @@ const readline = require("readline")
 const router = express.Router()
 const swaggerDocument = require("../../swagger.json")
 const swaggerUi = require("swagger-ui-express")
+import { Options } from "./settings"
 
 const app = express()
 
@@ -22,7 +23,7 @@ class NodeController {
   constructor (node: any) {
     router.route("/contents")
       .get((req: any, res: any, next: any) => {
-        res.json(node.contentsClient.getInfoHashes())  
+        res.json(node.contentsClient.getInfoHashes())
       })
     router.route("/settings")
       .get((req: any, res: any, next: any) => {
@@ -57,7 +58,7 @@ class NodeController {
           }
        })
       })
-    app.listen(9000)
+    app.listen(node.settings.get(Options.controllerPort), node.settings.get(Options.controllerIp));
   }
 }
 

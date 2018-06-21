@@ -28,6 +28,8 @@ export enum Options {
   masterAddress = "masterAddress",
   whitelistMasters = "whitelist.masters",
   controller = "controller",
+  controllerIp = "controller.ip",
+  controllerPort = "controller.port",
   skipBlockchain = "skipBlockchain",
   nodeId = "nodeId"
 }
@@ -58,6 +60,8 @@ export class Settings extends EventEmitter {
     masterAddress: string,
     whitelistMasters: string[],
     controller: boolean,
+    controllerIp: string,
+    controllerPort: string,
     skipBlockchain: boolean,
     nodeId: string
   }
@@ -86,7 +90,7 @@ export class Settings extends EventEmitter {
     }
 
     this.settings = this._read()
-    
+
     const idPrefix = this.opts.isHeadless ? "terminal" : "gui"
     this.update(Options.isHeadless, this.opts.isHeadless, false)
     this.update(Options.skipBlockchain, this.opts.skipBlockchain, true)
@@ -112,6 +116,8 @@ export class Settings extends EventEmitter {
     this.update(Options.masterAddress, this.opts.masterAddress,  skipBlockchain ? "" : undefined)
     this.update(Options.whitelistMasters, this.opts.whitelistMasters, [])
     this.update(Options.controller, this.opts.controller, false)
+    this.update(Options.controllerIp, this.opts.controllerIp, "127.0.0.1")
+    this.update(Options.controllerPort, this.opts.controllerPort, "9000")
     this.update(Options.nodeId, this.opts.nodeId, () => randomString(40))
 
     // resolve to full paths

@@ -25,6 +25,13 @@ class NodeController {
       .get((req: any, res: any, next: any) => {
         res.json(node.statistics.get())
       })
+    router.route("/storage")
+      .get((req: any, res: any, next: any) => {
+        node.storageSpace.stats()
+          .then((stats: any) => {
+            res.json(stats)
+          });
+      })
     router.route("/contents")
       .get((req: any, res: any, next: any) => {
         res.json(node.contentsClient.getInfoHashes())

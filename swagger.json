@@ -61,6 +61,19 @@
         }
       }
     },
+    "/storage": {
+      "get": {
+        "tags": [
+          "Storage"
+        ],
+        "summary": "Get storage info",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/contents": {
       "get": {
         "tags": [

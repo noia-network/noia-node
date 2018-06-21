@@ -1,76 +1,76 @@
 {
-  "name": "noia-node",
-  "version": "0.2.4",
-  "description": "NOIA Node core.",
-  "main": "dist/index.js",
-  "scripts": {
-    "postinstall": "tsc --skipLibCheck",
-    "test": "jest",
-    "watch-jest": "jest --watch",
-    "build": "npm run build-ts",
-    "build-ts": "tsc",
-    "watch-ts": "tsc -w"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/noia-network/noia-node.git"
-  },
-  "keywords": [],
-  "author": {
-    "name": "NOIA Network Limited"
-  },
-  "license": "LGPL-2.1",
-  "homepage": "https://github.com/noia-network/noia-node",
-  "devDependencies": {
-    "jest": "^22.4.3",
-    "ts-jest": "^22.4.4"
-  },
-  "dependencies": {
-    "@types/jest": "^22.2.3",
-    "@types/jsonfile": "^4.0.1",
-    "@types/node": "^9.6.12",
-    "@types/node-fetch": "^1.6.8",
-    "@types/rimraf": "^2.0.2",
-    "@types/ws": "^4.0.2",
-    "body-parser": "^1.18.2",
-    "crypto": "^1.0.1",
-    "dotenv": "^5.0.1",
-    "express": "^4.16.3",
-    "external-ip": "^2.0.3",
-    "fs-chunk-store": "^1.6.5",
-    "immediate-chunk-store": "^1.0.8",
-    "jsonfile": "^4.0.0",
-    "logdna-winston": "^1.0.0",
-    "mime-types": "^2.1.18",
-    "mkdirp": "^0.5.1",
-    "node-fetch": "^2.0.0",
-    "node-static": "^0.7.10",
-    "noia-governance": "https://github.com/noia-network/noia-governance.git",
-    "noia-node-contents-client": "https://github.com/noia-network/noia-node-contents-client.git",
-    "noia-protocol": "https://github.com/noia-network/noia-protocol.git",
-    "parse-torrent": "^5.9.0",
-    "randombytes": "^2.0.6",
-    "request": "^2.85.0",
-    "rimraf": "^2.6.2",
-    "speedometer": "^1.0.0",
-    "swagger-ui-express": "^3.0.8",
-    "typescript": "^2.8.3",
-    "valid-url": "^1.0.9",
-    "winston": "^2.4.1",
-    "ws": "^5.0.0"
-  },
-  "jest": {
-    "transform": {
-      "^.+\\.tsx?$": "ts-jest"
+    "name": "noia-node",
+    "version": "0.2.4",
+    "description": "NOIA Node core.",
+    "main": "dist/index.js",
+    "scripts": {
+        "build": "npm run build-ts",
+        "test": "jest",
+        "postinstall": "tsc --skipLibCheck",
+        "watch-jest": "jest --watch",
+        "build-ts": "tsc",
+        "watch-ts": "tsc -w"
     },
-    "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
-    "moduleFileExtensions": [
-      "ts",
-      "tsx",
-      "js",
-      "jsx",
-      "json",
-      "node"
-    ]
-  }
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/noia-network/noia-node.git"
+    },
+    "keywords": [],
+    "author": {
+        "name": "NOIA Network Limited"
+    },
+    "license": "LGPL-2.1",
+    "homepage": "https://github.com/noia-network/noia-node",
+    "devDependencies": {
+        "jest": "^22.4.3",
+        "ts-jest": "^22.4.4"
+    },
+    "dependencies": {
+        "@types/jest": "^22.2.3",
+        "@types/jsonfile": "^4.0.1",
+        "@types/node": "^9.6.12",
+        "@types/node-fetch": "^1.6.8",
+        "@types/rimraf": "^2.0.2",
+        "@types/ws": "^4.0.2",
+        "body-parser": "^1.18.2",
+        "crypto": "^1.0.1",
+        "dotenv": "^5.0.1",
+        "express": "^4.16.3",
+        "external-ip": "^2.0.3",
+        "fs-chunk-store": "^1.6.5",
+        "immediate-chunk-store": "^1.0.8",
+        "jsonfile": "^4.0.0",
+        "logdna-winston": "^1.0.0",
+        "mime-types": "^2.1.18",
+        "mkdirp": "^0.5.1",
+        "node-fetch": "^2.0.0",
+        "node-static": "^0.7.10",
+        "noia-governance": "https://github.com/noia-network/noia-governance.git#v0.0.1",
+        "noia-node-contents-client": "https://github.com/noia-network/noia-node-contents-client.git#v0.1.0",
+        "noia-protocol": "https://github.com/noia-network/noia-protocol.git#v0.1.0",
+        "parse-torrent": "^5.9.0",
+        "randombytes": "^2.0.6",
+        "request": "^2.85.0",
+        "rimraf": "^2.6.2",
+        "speedometer": "^1.0.0",
+        "swagger-ui-express": "^3.0.8",
+        "typescript": "^2.8.3",
+        "valid-url": "^1.0.9",
+        "winston": "^2.4.1",
+        "ws": "^5.0.0"
+    },
+    "jest": {
+        "transform": {
+            "^.+\\.tsx?$": "ts-jest"
+        },
+        "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
+        "moduleFileExtensions": [
+            "ts",
+            "tsx",
+            "js",
+            "jsx",
+            "json",
+            "node"
+        ]
+    }
 }

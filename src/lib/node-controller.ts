@@ -8,6 +8,7 @@ import logger from "./logger";
 import { Options } from "./settings";
 
 const router = express.Router();
+// TODO: Do not use "require()" for file reading.
 const swaggerDocument = require("../../swagger.json");
 const app = express();
 

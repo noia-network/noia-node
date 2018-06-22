@@ -1,6 +1,6 @@
 {
     "name": "@noia-network/node",
-    "version": "0.2.5",
+    "version": "0.2.6",
     "description": "NOIA Node core.",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -63,6 +63,7 @@
     "files": [
         "dist",
         "**/*.md",
+        "swagger.json",
         "@types",
         "!/examples"
     ],

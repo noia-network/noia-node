@@ -23,6 +23,27 @@ class NodeController {
     public node: any;
 
     constructor(node: any) {
+        router.route("/wallet").get((req: any, res: any, next: any) => {
+            res.json({wallet: node.settings.get(Options.walletAddress)});
+        });
+        router.route("/wallet").post((req: any, res: any, next: any) => {
+            let wallet = req.body.wallet;
+
+            if (!wallet) {
+              return res.status(400).json({error: "Please specify a wallet"});
+            }
+
+            if (wallet.length !== 42) {
+              return res.status(400).json({error: "Please specify a valid wallet"});
+            }
+
+            node.setWallet(wallet);
+            res.json({success: true, wallet: node.settings.get(Options.walletAddress)});
+            node.restart();
+        });
+        router.route("/speed").get((req: any, res: any, next: any) => {
+            res.json({downloadSpeed: node.contentsClient.downloadSpeed, uploadSpeed: node.contentsClient.uploadSpeed});
+        });
         router.route("/statistics").get((req: any, res: any, next: any) => {
             res.json(node.statistics.get());
         });

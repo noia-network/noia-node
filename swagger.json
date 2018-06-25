@@ -1,9 +1,9 @@
 {
   "swagger": "2.0",
   "info": {
-    "version": "0.0.0",
-    "title": "Node API",
-    "description": "Node API",
+    "version": "0.0.1",
+    "title": "Noia Node API",
+    "description": "Noia Node controller to control your Node",
     "license": {
       "name": "MIT",
       "url": "https://opensource.org/licenses/MIT"
@@ -14,15 +14,31 @@
   "tags": [
     {
       "name": "Settings",
-      "description": "API for node settings"
+      "description": "API endpoint for node settings"
     },
     {
       "name": "Contents",
-      "description": "API for node contents"
+      "description": "API endpoint for node contents"
     },
     {
       "name": "Logs",
-      "description": "API for node logs"
+      "description": "API endpoint for node logs"
+    },
+    {
+      "name": "Statistics",
+      "description": "API endpoint for node statistics"
+    },
+    {
+      "name": "Wallet",
+      "description": "API endpoint for controlling node wallet"
+    },
+    {
+      "name": "Storage",
+      "description": "API endpoint for node storage"
+    },
+    {
+      "name": "Speed",
+      "description": "API endpoint for node upload and download speed"
     }
   ],
   "schemes": [
@@ -96,6 +112,58 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/speed": {
+      "get": {
+        "tags": [
+          "Speed"
+        ],
+        "summary": "Get download and upload speed",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/wallet": {
+      "get": {
+        "tags": [
+          "Wallet"
+        ],
+        "summary": "Retrieve wallet address",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Wallet"
+        ],
+        "summary": "Set wallet address",
+        "consumes": [
+          "application/x-www-form-urlencoded"
+        ],
+        "parameters": [
+          {
+            "name": "wallet",
+            "in": "formData",
+            "description": "Wallet address",
+            "type": "string",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Invalid address"
           }
         }
       }

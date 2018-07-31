@@ -130,6 +130,10 @@ Node configuration can be supplied to `Node` object or set via `settings.json` f
 | no | ws | sockets.ws | boolean | true | True to deliver content via WebSockets protocol.
 | no | wsIp | sockets.ws.ip | string | 0.0.0.0 | WS listening ip.
 | no | wsPort | sockets.ws.port | number | 7676 | WS listening port.
+| no | wrtc | sockets.wrtc | boolean | true | True to deliver content via WebRTC.
+| no | wrtcControlPort | sockets.wrtc.control.port | number | 7677 | Control port to exchange SDP descriptions via HTTP.
+| no | wrtcControlIp | sockets.wrtc.control.ip | string | 0.0.0.0 | Control ip to exchange SDP descriptions via HTTP.
+| no | wrtcDataPort | sockets.wrtc.data.port | number | 7679 |  WebRTC data port.
 | no | walletMnemonic | wallet.mnemonic | string | generated | Wallet mnemonic.
 | no | walletAddress | wallet.address | string | empty | Wallet address. If `skipBlockchain` is turned on this setting takes effect, else `walletMnemonic` is used to retrieve wallet address.
 | if not skipBlockchain | walletProviderUrl | wallet.providerUrl | string | empty | Wallet provider url.

@@ -22,6 +22,10 @@ export enum Options {
     ws = "sockets.ws",
     wsIp = "sockets.ws.ip",
     wsPort = "sockets.ws.port",
+    wrtc = "sockets.wrtc",
+    wrtcControlPort = "sockets.wrtc.control.port",
+    wrtcControlIp = "sockets.wrtc.control.ip",
+    wrtcDataPort = "sockets.wrtc.data.port",
     walletAddress = "wallet.address",
     walletMnemonic = "wallet.mnemonic",
     walletProviderUrl = "wallet.providerUrl",
@@ -54,6 +58,10 @@ export class Settings extends EventEmitter {
         ws: boolean;
         wsIp: string;
         wsPort: string;
+        wrtc: boolean;
+        wrtcControlPort: string;
+        wrtcControlIp: string;
+        wrtcDataPort: string;
         walletAddress: string;
         walletMnemonic: string;
         walletProviderUrl: string;
@@ -110,6 +118,10 @@ export class Settings extends EventEmitter {
         this.update(Options.ws, this.opts.ws, true);
         this.update(Options.wsIp, this.opts.wsIp, "0.0.0.0");
         this.update(Options.wsPort, this.opts.wsPort, "7676");
+        this.update(Options.wrtc, this.opts.wrtc, true);
+        this.update(Options.wrtcControlPort, this.opts.wrtcControlPort, "7677");
+        this.update(Options.wrtcControlIp, this.opts.wrtcControlIp, "0.0.0.0");
+        this.update(Options.wrtcDataPort, this.opts.wrtcDataPort, "7678");
         this.update(Options.walletAddress, this.opts.walletAddress, skipBlockchain ? "" : undefined);
         this.update(Options.walletMnemonic, this.opts.walletMnemonic, () => randomString(20));
         this.update(Options.walletProviderUrl, this.opts.walletProviderUrl, skipBlockchain ? undefined : "");

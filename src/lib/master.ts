@@ -116,7 +116,15 @@ class Master extends EventEmitter {
                 nodeClientData.info["interface"] = this._node.settings.get(this._node.settings.Options.isHeadless) ? "terminal" : "gui";
                 // If node public IP is empty or invalid, master should resolve it on its own
                 nodeClientData.info["node_ip"] = this._node.settings.get(this._node.settings.Options.publicIp);
+                // TODO: deprecate node_ws_port with next version.
                 nodeClientData.info["node_ws_port"] = this._node.settings.get(this._node.settings.Options.wsPort);
+                nodeClientData.info["connections"] = {
+                    ws: this._node.settings.Options.ws != null ? this._node.settings.get(this._node.settings.Options.wsPort) : null,
+                    webrtc:
+                        this._node.settings.Options.wrtc != null
+                            ? this._node.settings.get(this._node.settings.Options.wrtcControlPort)
+                            : null
+                };
                 nodeClientData.info["node_domain"] = this._node.settings.get(this._node.settings.Options.domain);
                 // TODO: should wallet address be send if blockchain is used?
                 nodeClientData.info["node_wallet_address"] = this._node.settings.get(this._node.settings.Options.walletAddress);

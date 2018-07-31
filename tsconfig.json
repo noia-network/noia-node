@@ -2,9 +2,7 @@
     "compilerOptions": {
         "target": "es6",
         "module": "commonjs",
-        "lib": [
-            "es7"
-        ],
+        "lib": ["dom", "es7"],
         "sourceMap": true,
         "outDir": "dist",
         "strict": true,

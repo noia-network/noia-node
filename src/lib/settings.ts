@@ -115,7 +115,7 @@ export class Settings extends EventEmitter {
         this.update(Options.http, this.opts.http, false);
         this.update(Options.httpIp, this.opts.httpIp, "0.0.0.0");
         this.update(Options.httpPort, this.opts.httpPort, "6767");
-        this.update(Options.ws, this.opts.ws, true);
+        this.update(Options.ws, this.opts.ws, false);
         this.update(Options.wsIp, this.opts.wsIp, "0.0.0.0");
         this.update(Options.wsPort, this.opts.wsPort, "7676");
         this.update(Options.wrtc, this.opts.wrtc, true);

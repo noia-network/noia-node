@@ -118,22 +118,22 @@ Node configuration can be supplied to `Node` object or set via `settings.json` f
 | no | isHeadless | isHeadless | boolean | true | False if node GUI.
 | no | storageDir | storage.dir | string | ./storage | Path to storage directory.
 | no | storageSize | storage.size | number | 104857600 | Size of disk space available to use for caching purposes.
-| yes | domain | domain | string | empty | Domain SSL is valid for.
-| yes | ssl | ssl | boolean | false | True to use secure connections.
-| yes | sslPrivateKeyPath | ssl.privateKeyPath | string | empty | Path to SSL private key.
-| yes | sslCrtPath | ssl.crtPath | string | empty | Path to certificate.
-| yes | sslCrtBundlePath | ssl.crtBundlePath | string | empty | Path to certificate bundle.
+| if ws | domain | domain | string | empty | Domain SSL is valid for.
+| if ws | ssl | ssl | boolean | false | True to use secure connections.
+| if ws | sslPrivateKeyPath | ssl.privateKeyPath | string | empty | Path to SSL private key.
+| if ws | sslCrtPath | ssl.crtPath | string | empty | Path to certificate.
+| if ws | sslCrtBundlePath | ssl.crtBundlePath | string | empty | Path to certificate bundle.
 | no | publicIp | publicIp | string | empty | Public IP that master must use. If empty, master must resolve IP by itself.
-| no | http | sockets.http | boolean | false | True to deliver content via HTTP protocol.
+| no | http | sockets.http | boolean | false | True to deliver content via HTTP protocol. 
 | no | httpIp | sockets.http.ip | string | 0.0.0.0 | HTTP listening ip.
 | no | httpPort | sockets.http.port | number | 6767 | HTTP listening port.
-| no | ws | sockets.ws | boolean | true | True to deliver content via WebSockets protocol.
+| no | ws | sockets.ws | boolean | false | True to deliver content via WebSockets protocol.
 | no | wsIp | sockets.ws.ip | string | 0.0.0.0 | WS listening ip.
 | no | wsPort | sockets.ws.port | number | 7676 | WS listening port.
-| no | wrtc | sockets.wrtc | boolean | true | True to deliver content via WebRTC.
-| no | wrtcControlPort | sockets.wrtc.control.port | number | 7677 | Control port to exchange SDP descriptions via HTTP.
-| no | wrtcControlIp | sockets.wrtc.control.ip | string | 0.0.0.0 | Control ip to exchange SDP descriptions via HTTP.
-| no | wrtcDataPort | sockets.wrtc.data.port | number | 7679 |  WebRTC data port.
+| yes | wrtc | sockets.wrtc | boolean | true | True to deliver content via WebRTC.
+| yes | wrtcControlPort | sockets.wrtc.control.port | number | 7677 | Control port to exchange SDP descriptions via HTTP.
+| yes | wrtcControlIp | sockets.wrtc.control.ip | string | 0.0.0.0 | Control ip to exchange SDP descriptions via HTTP.
+| yes | wrtcDataPort | sockets.wrtc.data.port | number | 7679 |  WebRTC data port.
 | no | walletMnemonic | wallet.mnemonic | string | generated | Wallet mnemonic.
 | no | walletAddress | wallet.address | string | empty | Wallet address. If `skipBlockchain` is turned on this setting takes effect, else `walletMnemonic` is used to retrieve wallet address.
 | if not skipBlockchain | walletProviderUrl | wallet.providerUrl | string | empty | Wallet provider url.
@@ -147,7 +147,7 @@ Node configuration can be supplied to `Node` object or set via `settings.json` f
 | no | nodeId | nodeId | string | generated | Node identifier if skipping blockchain.
 
 
-`*` mandatory to override value to connect to NOIA master and serve content using WS protocol (default setup).
+`*` mandatory to make sure configuration is correct to connect to NOIA master and serve content using WebRTC protocol (default setup) or via secure WS (WebSockets). Currently HTTPS is not recommended and poorly supported.
 
 **Note**: `skipBlockchain` is turned on by default while we develop blockchain network.
 

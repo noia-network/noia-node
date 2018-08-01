@@ -1,6 +1,6 @@
 {
     "name": "@noia-network/node",
-    "version": "0.3.8",
+    "version": "0.3.9",
     "description": "NOIA Node core.",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",

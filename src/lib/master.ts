@@ -119,9 +119,12 @@ class Master extends EventEmitter {
                 // TODO: deprecate node_ws_port with next version.
                 nodeClientData.info["node_ws_port"] = this._node.settings.get(this._node.settings.Options.wsPort);
                 nodeClientData.info["connections"] = {
-                    ws: this._node.settings.Options.ws != null ? this._node.settings.get(this._node.settings.Options.wsPort) : null,
+                    ws:
+                        this._node.settings.get(this._node.settings.Options.ws) === true
+                            ? this._node.settings.get(this._node.settings.Options.wsPort)
+                            : null,
                     webrtc:
-                        this._node.settings.Options.wrtc != null
+                        this._node.settings.get(this._node.settings.Options.wrtc) === true
                             ? this._node.settings.get(this._node.settings.Options.wrtcControlPort)
                             : null
                 };

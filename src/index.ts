@@ -43,14 +43,14 @@ class Node extends EventEmitter {
         this.contentsClient.on("seeding", (infoHashes: string[]) => {
             this.master.seeding(infoHashes);
             this.storageSpace.stats().then(info => {
-                this.master.metadata(info);
+                this.master.metadata({ storage: info });
             });
         });
         this.master.on("connected", () => {
             this.contentsClient.start();
             this.clientSockets.listen();
             this.storageSpace.stats().then(info => {
-                this.master.metadata(info);
+                this.master.metadata({ storage: info });
             });
         });
         this.master.on("error", err => {

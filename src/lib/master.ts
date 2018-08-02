@@ -226,6 +226,12 @@ class Master extends EventEmitter {
         self._wire.uploaded(infoHash, bandwidth, host, port);
     }
 
+    metadata(params: { [key: string]: any }) {
+        const self = this;
+        logger.info(`Notifying master (${self._wire.address}) on changed metadata=`, params);
+        self._wire.metadata(params);
+    }
+
     seeding(infoHashes: any) {
         const self = this;
         logger.info(`Notifying master (${self._wire.address}) delivering ${infoHashes.length} content(s)=${infoHashes}`);

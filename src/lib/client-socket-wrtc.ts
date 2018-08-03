@@ -70,6 +70,7 @@ class ClientSocketWrtc extends EventEmitter {
                 const key = `${info.resource.infoHash}:${info.ip}`;
                 if (!groups[key])
                     groups[key] = {
+                        type: "webrtc",
                         ip: info.ip,
                         resource: {
                             infoHash: info.resource.infoHash,
@@ -84,7 +85,7 @@ class ClientSocketWrtc extends EventEmitter {
                 const resource = `resource=${info.resource.infoHash}`;
                 const size = `size=${info.resource.size.toFixed(4)}`;
                 const sizeMB = `size=${info.resource.size.toFixed(4) / 1e6}`;
-                logger.info(`WS sent to ${client} ${resource} ${sizeMB}`);
+                logger.info(`WebRTC sent to ${client} ${resource} ${sizeMB}`);
                 this.emit("resourceSent", groups[key]);
             });
         }, this._queueInterval);
@@ -129,7 +130,7 @@ class ClientSocketWrtc extends EventEmitter {
             (resBuff: Buffer): void => {
                 // TODO: write test so this debug info would never be required.
                 // logger.info(`[${channel.id}] response infoHash=${infoHash} index=${piece} offset=${offset} length=${resBuff.length}`);
-                queueEvent(this, channel.id, infoHash, resBuff.length);
+                queueEvent(this, this.filterIp(channel), infoHash, resBuff.length);
                 try {
                     if (channel.dc == null) {
                         logger.warn("no data channel");
@@ -186,7 +187,7 @@ class ClientSocketWrtc extends EventEmitter {
         if (channel.remoteAddress == null) {
             throw new Error("remoteAddress cannot be invalid.");
         }
-        return channel.remoteAddress.split(":")[1];
+        return channel.remoteAddress.split(":")[0];
     }
 
     private countChannels(channels: { [name: string]: Channel }): number {

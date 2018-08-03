@@ -123,6 +123,7 @@ class ClientSocketWs extends EventEmitter {
                 const key = `${info.resource.infoHash}:${info.ip}`;
                 if (!groups[key])
                     groups[key] = {
+                        type: "ws",
                         ip: info.ip,
                         resource: {
                             infoHash: info.resource.infoHash,

@@ -27,7 +27,6 @@ class Node extends EventEmitter {
 
     constructor(opts: any) {
         super();
-
         this.opts = opts || {};
         this.settings = new Settings(opts);
         this.statistics = new Statistics(opts);
@@ -43,10 +42,16 @@ class Node extends EventEmitter {
 
         this.contentsClient.on("seeding", (infoHashes: string[]) => {
             this.master.seeding(infoHashes);
+            this.storageSpace.stats().then(info => {
+                this.master.metadata({ storage: info });
+            });
         });
         this.master.on("connected", () => {
             this.contentsClient.start();
             this.clientSockets.listen();
+            this.storageSpace.stats().then(info => {
+                this.master.metadata({ storage: info });
+            });
         });
         this.master.on("error", err => {
             this.stop();
@@ -187,6 +192,13 @@ class Node extends EventEmitter {
                   ssl_key: options(Options.privateKeyPath),
                   ssl_cert: options(Options.crtPath),
                   ssl_ca: options(Options.crtBundlePath)
+              }
+            : false;
+        clientSocketsOpts.wrtc = options(Options.wrtc)
+            ? {
+                  controlPort: options(Options.wrtcControlPort),
+                  controlIp: options(Options.wrtcControlIp),
+                  dataPort: options(Options.wrtcDataPort)
               }
             : false;
         return clientSocketsOpts;

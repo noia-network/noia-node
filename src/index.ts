@@ -101,10 +101,7 @@ class Node extends EventEmitter {
 
         const skipBlockain = this.settings.get(Options.skipBlockchain);
         if (skipBlockain) {
-            this.master.connect(
-                this.settings.get(Options.masterAddress),
-                null
-            );
+            this.master.connect(this.settings.get(Options.masterAddress), null);
         } else {
             this.wallet.lazyNodeRegistration(this.settings.get(Options.client)).then(isRegistered => {
                 if (isRegistered) {
@@ -112,10 +109,7 @@ class Node extends EventEmitter {
                         .findFirstJob()
                         .then((jobData: any) => {
                             const address = `ws://${jobData.info.host}:${jobData.info.port}`;
-                            this.master.connect(
-                                address,
-                                jobData.employerAddress
-                            );
+                            this.master.connect(address, jobData.employerAddress);
                         })
                         .catch((err: Error) => {
                             this.logger.error("Could not find job and connect to master", err);

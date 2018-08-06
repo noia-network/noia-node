@@ -1,6 +1,6 @@
 {
     "name": "@noia-network/node",
-    "version": "0.3.12",
+    "version": "0.3.13",
     "description": "NOIA Node core.",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -32,7 +32,7 @@
         "ts-jest": "^22.4.4"
     },
     "dependencies": {
-        "@noia-network/governance": "0.0.2",
+        "@noia-network/governance": "0.0.4",
         "@noia-network/node-contents-client": "^0.2.1",
         "@noia-network/protocol": "^0.3.2",
         "@noia-network/webrtc-direct-server": "^0.2.6",

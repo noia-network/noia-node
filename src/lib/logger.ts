@@ -1,7 +1,7 @@
 import path from "path";
 const dotenv = require("dotenv").config({ path: path.resolve(process.cwd(), ".env") });
 const config = dotenv.error ? {} : dotenv.parsed;
-import logdna from "logdna-winston";
+import "logdna-winston";
 import winston from "winston";
 // const path = module.filename.split("/").slice(-2).join("/");
 

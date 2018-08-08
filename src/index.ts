@@ -192,7 +192,8 @@ class Node extends EventEmitter {
             ? {
                   controlPort: options(Options.wrtcControlPort),
                   controlIp: options(Options.wrtcControlIp),
-                  dataPort: options(Options.wrtcDataPort)
+                  dataPort: options(Options.wrtcDataPort),
+                  dataIp: options(Options.wrtcDataIp)
               }
             : false;
         return clientSocketsOpts;

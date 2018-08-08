@@ -21,7 +21,13 @@ class ClientSockets extends EventEmitter {
 
         this.http = new ClientSocketHttp(this._node, this.opts.http.port, this.opts.http.ip);
         this.ws = new ClientSocketWs(this._node, this.opts.ws.port, this.opts.ws.ip, this.opts.ws);
-        this.wrtc = new ClientSocketWrtc(this._node, this.opts.wrtc.controlPort, this.opts.wrtc.dataPort, this.opts.wrtc.controlIp);
+        this.wrtc = new ClientSocketWrtc(
+            this._node,
+            this.opts.wrtc.controlPort,
+            this.opts.wrtc.dataPort,
+            this.opts.wrtc.controlIp,
+            this.opts.wrtc.dataIp
+        );
 
         if (this.opts.http) {
             this.http.on("listening", (info: any) => {

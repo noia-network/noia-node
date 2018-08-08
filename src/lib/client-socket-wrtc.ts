@@ -7,21 +7,23 @@ class ClientSocketWrtc extends EventEmitter {
     public controlPort: number;
     public dataPort: number;
     public controlIp: string;
+    public dataIp: string;
     public _node: Node;
     public type: string = "wrtc";
     public wrtc: WebRtcDirect;
     public queue: Array<any>;
     public _queueInterval: any;
 
-    constructor(node: Node, controlPort: number, dataPort: number, controlIp: string) {
+    constructor(node: Node, controlPort: number, dataPort: number, controlIp: string, dataIp: string) {
         super();
         this.controlPort = controlPort || node.settings.get(node.settings.Options.wrtcControlPort);
         this.dataPort = dataPort || node.settings.get(node.settings.Options.wrtcDataPort);
         this.controlIp = controlIp || "0.0.0.0";
+        this.dataIp = dataIp;
         this._node = node;
         this.queue = [];
 
-        this.wrtc = new WebRtcDirect(this.controlPort, this.dataPort, this.controlIp);
+        this.wrtc = new WebRtcDirect(this.controlPort, this.dataPort, this.controlIp, this.dataIp);
 
         logger.warn("connection listener added");
         this.wrtc.on("connection", (channel: Channel) => {

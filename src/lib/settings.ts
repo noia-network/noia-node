@@ -8,13 +8,14 @@ import logger from "./logger";
 
 export enum Options {
     isHeadless = "isHeadless",
+    statisticsPath = "statisticsPath",
     storageDir = "storage.dir",
     storageSize = "storage.size",
     domain = "domain",
     ssl = "ssl",
-    privateKeyPath = "ssl.privateKeyPath",
-    crtPath = "ssl.crtPath",
-    crtBundlePath = "ssl.crtBundlePath",
+    sslPrivateKeyPath = "ssl.privateKeyPath",
+    sslCrtPath = "ssl.crtPath",
+    sslCrtBundlePath = "ssl.crtBundlePath",
     publicIp = "publicIp",
     http = "sockets.http",
     httpIp = "sockets.http.ip",
@@ -45,13 +46,14 @@ export class Settings extends EventEmitter {
         isHeadless: boolean;
         userDataPath?: string;
         settingsPath: string;
+        statisticsPath: string;
         storageDir: string;
         storageSize: string;
         domain: string;
         ssl: boolean;
-        privateKeyPath: string;
-        crtPath: string;
-        crtBundlePath: string;
+        sslPrivateKeyPath: string;
+        sslCrtPath: string;
+        sslCrtBundlePath: string;
         publicIp: string;
         http: boolean;
         httpIp: string;
@@ -106,13 +108,14 @@ export class Settings extends EventEmitter {
         this.update(Options.isHeadless, this.opts.isHeadless, false);
         this.update(Options.skipBlockchain, this.opts.skipBlockchain, true);
         const skipBlockchain = this.get(Options.skipBlockchain);
+        this.update(Options.statisticsPath, this.opts.statisticsPath, path.resolve(path.join(this.opts.userDataPath, "statistics.json")));
         this.update(Options.storageDir, this.opts.storageDir, path.resolve(this.opts.userDataPath, "./storage"));
         this.update(Options.storageSize, this.opts.storageSize, "104857600");
         this.update(Options.domain, this.opts.domain, "");
         this.update(Options.ssl, this.opts.ssl, false);
-        this.update(Options.privateKeyPath, this.opts.privateKeyPath, "");
-        this.update(Options.crtPath, this.opts.crtPath, "");
-        this.update(Options.crtBundlePath, this.opts.crtBundlePath, "");
+        this.update(Options.sslPrivateKeyPath, this.opts.sslPrivateKeyPath, "");
+        this.update(Options.sslCrtPath, this.opts.sslCrtPath, "");
+        this.update(Options.sslCrtBundlePath, this.opts.sslCrtBundlePath, "");
         this.update(Options.publicIp, this.opts.publicIp, "");
         this.update(Options.http, this.opts.http, false);
         this.update(Options.httpIp, this.opts.httpIp, "0.0.0.0");
@@ -142,19 +145,19 @@ export class Settings extends EventEmitter {
             this.update(Options.storageDir, path.resolve(storageDir));
         }
 
-        const privateKeyPath = this.get(Options.privateKeyPath);
-        if (privateKeyPath) {
-            this.update(Options.privateKeyPath, path.resolve(privateKeyPath));
+        const sslPrivateKeyPath = this.get(Options.sslPrivateKeyPath);
+        if (sslPrivateKeyPath) {
+            this.update(Options.sslPrivateKeyPath, path.resolve(sslPrivateKeyPath));
         }
 
-        const crtPath = this.get(Options.crtPath);
-        if (crtPath) {
-            this.update(Options.crtPath, path.resolve(crtPath));
+        const sslCrtPath = this.get(Options.sslCrtPath);
+        if (sslCrtPath) {
+            this.update(Options.sslCrtPath, path.resolve(sslCrtPath));
         }
 
-        const crtBundlePath = this.get(Options.crtBundlePath);
-        if (crtBundlePath) {
-            this.update(Options.crtBundlePath, path.resolve(crtBundlePath));
+        const sslCrtBundlePath = this.get(Options.sslCrtBundlePath);
+        if (sslCrtBundlePath) {
+            this.update(Options.sslCrtBundlePath, path.resolve(sslCrtBundlePath));
         }
 
         this.ready = true;

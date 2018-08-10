@@ -183,9 +183,9 @@ class Node extends EventEmitter {
                   ip: options(Options.wsIp),
                   port: options(Options.wsPort),
                   ssl: options(Options.ssl),
-                  ssl_key: options(Options.privateKeyPath),
-                  ssl_cert: options(Options.crtPath),
-                  ssl_ca: options(Options.crtBundlePath)
+                  ssl_key: options(Options.sslPrivateKeyPath),
+                  ssl_cert: options(Options.sslCrtPath),
+                  ssl_ca: options(Options.sslCrtBundlePath)
               }
             : false;
         clientSocketsOpts.wrtc = options(Options.wrtc)

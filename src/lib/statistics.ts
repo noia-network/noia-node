@@ -21,8 +21,7 @@ interface StatisticsOpts {
 
 export class Statistics extends EventEmitter {
     public opts: {
-        userDataPath?: string;
-        statisticsPath?: string;
+        statisticsPath: string;
     };
     public filePath: string;
     public statistics: any;
@@ -32,11 +31,8 @@ export class Statistics extends EventEmitter {
     constructor(opts: any) {
         super();
         this.opts = opts || {};
-        this.opts.userDataPath = typeof this.opts.userDataPath !== "string" ? "" : this.opts.userDataPath;
 
-        this.filePath = path.resolve(
-            this.opts.statisticsPath ? this.opts.statisticsPath : path.join(this.opts.userDataPath, "statistics.json")
-        );
+        this.filePath = this.opts.statisticsPath;
 
         logger.info(`Statistics filepath=${this.filePath}`);
 

@@ -113,7 +113,7 @@ Node configuration can be supplied to `Node` object or set via `settings.json` f
 `*`required |`Node` options property | `settings.json` property | type | default | description |
 |---|---|---|---|---| --- |
 | no | settingsPath | N/A | string | ./settings.json | Path to `settings.json`.
-| no | statisticsPath | N/A | string | ./statistics.json | Path to `statistics.json`.
+| no | statisticsPath | N/A | statisticsPath | ./statistics.json | Path to `statistics.json`.
 | no | userDataPath | N/A | string | empty | Path to user user data folder. If specified, default `settings.json` and/or `statistics.json` will be saved to user data folder.
 | no | isHeadless | isHeadless | boolean | true | False if node GUI.
 | no | storageDir | storage.dir | string | ./storage | Path to storage directory.

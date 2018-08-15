@@ -20,19 +20,15 @@ interface StatisticsOpts {
 }
 
 export class Statistics extends EventEmitter {
-    public opts: {
-        statisticsPath: string;
-    };
     public filePath: string;
     public statistics: any;
     public ready: boolean;
     public Options = StatisticsOptions;
 
-    constructor(opts: any) {
+    constructor(statisticsPath: string) {
         super();
-        this.opts = opts || {};
 
-        this.filePath = this.opts.statisticsPath;
+        this.filePath = statisticsPath;
 
         logger.info(`Statistics filepath=${this.filePath}`);
 

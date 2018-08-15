@@ -29,7 +29,7 @@ class Node extends EventEmitter {
         super();
         this.opts = opts || {};
         this.settings = new Settings(opts);
-        this.statistics = new Statistics(opts);
+        this.statistics = new Statistics(this.settings.get(Options.statisticsPath));
 
         this.master = new Master(this);
         this.clientSockets = new ClientSockets(this, this.getClientSocketsOptions(this.settings.get.bind(this.settings)));

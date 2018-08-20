@@ -1,3 +1,44 @@
+declare module "speedtest-net" {
+    interface Data {
+        speeds: {
+            download: number;
+            upload: number;
+            originalDownload: number;
+            originalUpload: number;
+        };
+        client: {
+            ip: string;
+            lat: number;
+            lon: number;
+            isp: string;
+            isprating: number;
+            rating: number;
+            ispdlavg: number;
+            ispulavg: number;
+            country: string;
+        };
+        server: {
+            host: string;
+            lat: number;
+            lon: number;
+            location: string;
+            country: string;
+            cc: string;
+            sponsor: string;
+            distance: number;
+            distanceMi: number;
+            ping: number;
+            id: string;
+        };
+    }
+    interface SpeedTest {
+        on(event: "data", listener: (data: Data) => void): this;
+        on(event: "error", listener: (error: Error) => void): this;
+    }
+    function speedTestNet(options?: { [key: string]: string | number }): SpeedTest;
+    export = speedTestNet;
+}
+
 declare module "randombytes" {
     import { randomBytes } from "crypto";
     export = randomBytes;

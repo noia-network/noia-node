@@ -8,6 +8,7 @@ import NodeController from "./lib/node-controller";
 import StorageSpace from "./lib/storage-space";
 import Wallet from "./lib/wallet";
 import localLogger from "./lib/logger";
+import { Helpers } from "./lib/helpers";
 import { Options, Settings } from "./lib/settings";
 import { Statistics } from "./lib/statistics";
 
@@ -49,9 +50,13 @@ class Node extends EventEmitter {
         this.master.on("connected", () => {
             this.contentsClient.start();
             this.clientSockets.listen();
-            this.storageSpace.stats().then(info => {
-                this.master.metadata({ storage: info });
-            });
+            Promise.all([this.storageSpace.stats(), Helpers.getSpeedTest()])
+                .then(results => {
+                    this.master.metadata({ storage: results[0], speedTest: results[1] });
+                })
+                .catch(err => {
+                    this.logger.error(err);
+                });
         });
         this.master.on("error", err => {
             this.stop();

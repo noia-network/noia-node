@@ -124,9 +124,9 @@ export class Settings extends EventEmitter {
         this.update(Options.wsIp, this.opts.wsIp, "0.0.0.0");
         this.update(Options.wsPort, this.opts.wsPort, "7676");
         this.update(Options.wrtc, this.opts.wrtc, true);
-        this.update(Options.wrtcControlPort, this.opts.wrtcControlPort, "7677");
+        this.update(Options.wrtcControlPort, this.opts.wrtcControlPort, "8048");
         this.update(Options.wrtcControlIp, this.opts.wrtcControlIp, "0.0.0.0");
-        this.update(Options.wrtcDataPort, this.opts.wrtcDataPort, "7678");
+        this.update(Options.wrtcDataPort, this.opts.wrtcDataPort, "8058");
         this.update(Options.wrtcDataIp, this.opts.wrtcDataIp, undefined);
         this.update(Options.walletAddress, this.opts.walletAddress, skipBlockchain ? "" : undefined);
         this.update(Options.walletMnemonic, this.opts.walletMnemonic, () => randomString(20));

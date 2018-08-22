@@ -17,6 +17,7 @@ export enum Options {
     sslCrtPath = "ssl.crtPath",
     sslCrtBundlePath = "ssl.crtBundlePath",
     publicIp = "publicIp",
+    natPmp = "natPmp",
     http = "sockets.http",
     httpIp = "sockets.http.ip",
     httpPort = "sockets.http.port",
@@ -55,6 +56,7 @@ export class Settings extends EventEmitter {
         sslCrtPath: string;
         sslCrtBundlePath: string;
         publicIp: string;
+        natPmp: boolean;
         http: boolean;
         httpIp: string;
         httpPort: string;
@@ -117,6 +119,7 @@ export class Settings extends EventEmitter {
         this.update(Options.sslCrtPath, this.opts.sslCrtPath, "");
         this.update(Options.sslCrtBundlePath, this.opts.sslCrtBundlePath, "");
         this.update(Options.publicIp, this.opts.publicIp, "");
+        this.update(Options.natPmp, this.opts.natPmp, false);
         this.update(Options.http, this.opts.http, false);
         this.update(Options.httpIp, this.opts.httpIp, "0.0.0.0");
         this.update(Options.httpPort, this.opts.httpPort, "6767");

@@ -1,3 +1,33 @@
+declare module "nat-pmp" {
+    interface PortMappingOpts {
+        private: number;
+        public: number;
+        ttl: number;
+        type: string;
+    }
+
+    interface MappingInfo {
+        msg: Buffer;
+        vers: number;
+        op: number;
+        resultCode: number;
+        resultMessage: string;
+        epoch: number;
+        internal: number;
+        private: number;
+        external: number;
+        public: number;
+        ttl: number;
+        type: string;
+    }
+
+    export interface Client {
+        portMapping(opts: PortMappingOpts, cb: (err: Error, info: MappingInfo) => void): void;
+    }
+
+    export function connect(gateway: string): Client;
+}
+
 declare module "speedtest-net" {
     interface Data {
         speeds: {

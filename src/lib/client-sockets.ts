@@ -4,6 +4,8 @@ import ClientSocketHttp from "./client-socket-http";
 import ClientSocketWrtc from "./client-socket-wrtc";
 import ClientSocketWs from "./client-socket-ws";
 import Node from "../index";
+import logger from "./logger";
+import { NatPmp, DEFAULT_TTL } from "./nat-pmp";
 
 class ClientSockets extends EventEmitter {
     public opts: any;
@@ -18,6 +20,44 @@ class ClientSockets extends EventEmitter {
         this.opts = opts || {};
 
         this._node = node;
+
+        // TODO: Implement unregistering, since now ports will be unmaped when default TTL will expire.
+        // TODO: Check epoch and remap is something goes wrong. See https://tools.ietf.org/html/rfc6886#section-3.6.
+        if (opts.natPmp) {
+            const natPmp = new NatPmp();
+            const registerPorts = (): void => {
+                const promises = [];
+                if (this.opts.wrtc) {
+                    promises.push(natPmp.register("tcp", this.opts.wrtc.controlPort));
+                    promises.push(natPmp.register("udp", this.opts.wrtc.dataPort));
+                }
+                if (this.opts.ws) {
+                    promises.push(natPmp.register("tcp", this.opts.ws.ip));
+                }
+                if (this.opts.http) {
+                    promises.push(natPmp.register("tcp", this.opts.http.port));
+                }
+
+                // TODO: Use await Promise.all.
+                Promise.all(promises)
+                    .then(() => {
+                        const timeoutSec = DEFAULT_TTL - 5;
+                        if (timeoutSec <= 0) {
+                            logger.warn("NAT-PMP rules refresh timeout cannot be <= 0, refreshing will be skipped!");
+                            return;
+                        }
+                        logger.info(`NAT-PMP rules created for ${DEFAULT_TTL} seconds. Refresing rules in ${timeoutSec} seconds.`);
+                        setTimeout(() => {
+                            registerPorts();
+                        }, timeoutSec * 1000);
+                    })
+                    .catch(err => {
+                        logger.error("Failed to create NAT-PMP rules.");
+                        this.emit("error", err);
+                    });
+            };
+            registerPorts();
+        }
 
         this.http = new ClientSocketHttp(this._node, this.opts.http.port, this.opts.http.ip);
         this.ws = new ClientSocketWs(this._node, this.opts.ws.port, this.opts.ws.ip, this.opts.ws);

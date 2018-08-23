@@ -150,8 +150,8 @@ class Master extends EventEmitter {
         }
 
         function _listeners() {
-            self._wire.once("warning", (info: any) => {
-                logger.error(info.message);
+            self._wire.on("warning", (info: any) => {
+                logger.warn(info.message);
             });
             self._wire.once("closed", (info: any) => {
                 self._onClosed(info);

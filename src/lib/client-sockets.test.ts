@@ -1,4 +1,4 @@
-import ClientSockets from "./client-sockets";
+import { ClientSockets } from "./client-sockets";
 
 it("should emit listening for http request", done => {
     const opts = {

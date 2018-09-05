@@ -118,9 +118,14 @@ class Master extends EventEmitter {
                 nodeClientData.info["node_ip"] = this._node.settings.get(this._node.settings.Options.publicIp);
                 // TODO: deprecate node_ws_port with next version.
                 nodeClientData.info["node_ws_port"] = this._node.settings.get(this._node.settings.Options.wsPort);
+                const isSsl = this._node.settings.get(this._node.settings.Options.ssl);
                 nodeClientData.info["connections"] = {
                     ws:
-                        this._node.settings.get(this._node.settings.Options.ws) === true
+                        isSsl === false && this._node.settings.get(this._node.settings.Options.ws) === true
+                            ? this._node.settings.get(this._node.settings.Options.wsPort)
+                            : null,
+                    wss:
+                        isSsl === true && this._node.settings.get(this._node.settings.Options.ws) === true
                             ? this._node.settings.get(this._node.settings.Options.wsPort)
                             : null,
                     webrtc:
@@ -244,7 +249,8 @@ class Master extends EventEmitter {
 
             self._wire.on("clear", (info: any) => {
                 self.emit("clear", info);
-                const infoHashes = info.infoHashes.length === 0 ? Object.keys(self._node.contentsClient.getAll()) : info.infoHashes;
+                // Clear everything if info resolves to false.
+                const infoHashes = info.infoHashes.length === 0 ? self._node.contentsClient.getInfoHashes() : info.infoHashes;
                 infoHashes.forEach((infoHash: any) => self._node.contentsClient.remove(infoHash));
                 self._wire.cleared(infoHashes);
             });

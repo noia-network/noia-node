@@ -92,7 +92,7 @@ export class Settings extends EventEmitter {
 
         this.file = path.resolve(this.opts.settingsPath ? this.opts.settingsPath : path.join(this.opts.userDataPath, "settings.json"));
 
-        logger.info(`Configuration filepath=${this.file}`);
+        logger.info(`Configuration filepath=${this.file}.`);
 
         if (!fs.existsSync(this.file)) {
             this._write({});
@@ -114,7 +114,9 @@ export class Settings extends EventEmitter {
         this.update(Options.storageDir, this.opts.storageDir, path.resolve(this.opts.userDataPath, "./storage"));
         this.update(Options.storageSize, this.opts.storageSize, "104857600");
         this.update(Options.domain, this.opts.domain, "");
-        this.update(Options.ssl, this.opts.ssl, false);
+        this.get(Options.ssl) === true && this.sslPathsExist() === false
+            ? this.update(Options.ssl, false)
+            : this.update(Options.ssl, this.opts.ssl, false);
         this.update(Options.sslPrivateKeyPath, this.opts.sslPrivateKeyPath, "");
         this.update(Options.sslCrtPath, this.opts.sslCrtPath, "");
         this.update(Options.sslCrtBundlePath, this.opts.sslCrtBundlePath, "");
@@ -220,9 +222,9 @@ export class Settings extends EventEmitter {
                     if (notified.includes(key)) return;
                     notified.push(key);
                     if (reverse) {
-                        logger.info(`Setting configuration key=${key} oldValue=${s1[key]} newValue=${s2[key]}`);
+                        logger.info(`Setting configuration key=${key} oldValue=${s1[key]} newValue=${s2[key]}.`);
                     } else {
-                        logger.info(`Setting configuration key=${key} oldValue=${s2[key]} newValue=${s1[key]}`);
+                        logger.info(`Setting configuration key=${key} oldValue=${s2[key]} newValue=${s1[key]}.`);
                     }
                     self.emit("changed", { key, value: s1[key] });
                 }
@@ -238,6 +240,28 @@ export class Settings extends EventEmitter {
 
     _read() {
         return jsonfile.readFileSync(this.file);
+    }
+
+    private sslPathsExist(): boolean {
+        let ssl = true;
+        if (this.get(Options.ssl) === true) {
+            const sslPrivateKeyPath = this.get(Options.sslPrivateKeyPath);
+            const sslCrtPath = this.get(Options.sslCrtPath);
+            const sslCrtBundlePath = this.get(Options.sslCrtBundlePath);
+            if (!fs.existsSync(sslPrivateKeyPath)) {
+                ssl = false;
+                logger.warn(`No such file: ${sslPrivateKeyPath}, fallback ssl=${ssl}.`);
+            }
+            if (!fs.existsSync(sslCrtPath)) {
+                ssl = false;
+                logger.warn(`No such file: ${sslCrtPath}, fallback ssl=${ssl}.`);
+            }
+            if (!fs.existsSync(sslCrtBundlePath)) {
+                ssl = false;
+                logger.warn(`No such file: ${sslCrtBundlePath}, fallback ssl=${ssl}.`);
+            }
+        }
+        return ssl;
     }
 }
 

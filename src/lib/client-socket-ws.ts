@@ -4,66 +4,52 @@ import fs from "fs";
 import http from "http";
 import https from "https";
 import randombytes from "randombytes";
+import { Server as HttpServer } from "http";
+import { Server as HttpsServer } from "https";
 
 import Node from "../index";
 import logger from "./logger";
 
-class ClientSocketWs extends EventEmitter {
+export interface ClientSocketWsOptions {
+    ip: string;
+    port: number;
+    ssl: boolean;
+    ssl_key: string;
+    ssl_cert: string;
+    ssl_ca: string;
+}
+
+export class ClientSocketWs extends EventEmitter {
     public ssl: any;
     public port: any;
     public ip: any;
     public _node: Node;
-    public server: any;
+    public server: HttpServer | HttpsServer;
     public type: string = "ws";
     public wss: WebSocket.Server;
     public info: any;
     public queue: Array<any>;
-    public sslConfig: any;
     public _queueInterval: any;
+    public opts: ClientSocketWsOptions;
 
-    constructor(node: Node, port: any, ip: any, opts: any) {
+    constructor(node: Node, port: any, ip: any, opts: ClientSocketWsOptions) {
         super();
-        this.ssl = false;
+        this.ssl = opts != null && opts.ssl === true;
+        this.opts = opts;
         this.port = port || node.settings.get(node.settings.Options.wsPort);
         this.ip = ip || "0.0.0.0";
         this._node = node;
-        this.server = null;
+
+        this.server =
+            this.ssl === true
+                ? https.createServer({
+                      key: fs.readFileSync(opts.ssl_key),
+                      cert: fs.readFileSync(opts.ssl_cert),
+                      ca: fs.readFileSync(opts.ssl_ca)
+                  })
+                : (this.server = http.createServer());
         this.info = null;
         this.queue = [];
-
-        if (opts && opts.ssl) {
-            this.ssl = true;
-            // TODO: investigate why throw new Error doesn"t print anything
-            if (!fs.existsSync(opts.ssl_key)) {
-                this.ssl = false;
-                logger.warn(`no such file: ${opts.ssl_key}, fallback ssl=${this.ssl}`);
-            }
-            if (!fs.existsSync(opts.ssl_cert)) {
-                this.ssl = false;
-                logger.warn(`no such file: ${opts.ssl_cert}, fallback ssl=${this.ssl}`);
-            }
-            if (!fs.existsSync(opts.ssl_ca)) {
-                this.ssl = false;
-                logger.warn(`no such file: ${opts.ssl_ca}, fallback ssl=${this.ssl}`);
-            }
-            this.sslConfig = {
-                ssl: this.ssl,
-                port: this.port,
-                ssl_key: opts.ssl_key,
-                ssl_cert: opts.ssl_cert,
-                ssl_ca: opts.ssl_ca
-            };
-        }
-
-        if (this.ssl === true) {
-            this.server = https.createServer({
-                key: fs.readFileSync(this.sslConfig.ssl_key),
-                cert: fs.readFileSync(this.sslConfig.ssl_cert),
-                ca: fs.readFileSync(this.sslConfig.ssl_ca)
-            });
-        } else {
-            this.server = http.createServer();
-        }
 
         this.server.on("error", (err: any) => {
             if (err.code === "EADDRINUSE") {
@@ -252,5 +238,3 @@ class ClientSocketWs extends EventEmitter {
         });
     }
 }
-
-export = ClientSocketWs;

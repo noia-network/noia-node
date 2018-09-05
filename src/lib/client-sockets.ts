@@ -2,19 +2,26 @@ import EventEmitter from "events";
 
 import ClientSocketHttp from "./client-socket-http";
 import ClientSocketWrtc from "./client-socket-wrtc";
-import ClientSocketWs from "./client-socket-ws";
 import Node from "../index";
 import logger from "./logger";
+import { ClientSocketWs, ClientSocketWsOptions } from "./client-socket-ws";
 import { NatPmp, DEFAULT_TTL } from "./nat-pmp";
 
-class ClientSockets extends EventEmitter {
+export interface ClientSocketsOptions {
+    natPmp?: any;
+    http?: any;
+    ws: ClientSocketWsOptions | boolean;
+    wrtc?: any;
+}
+
+export class ClientSockets extends EventEmitter {
     public opts: any;
     public _node: Node;
     public http: ClientSocketHttp;
     public ws: ClientSocketWs;
     public wrtc: ClientSocketWrtc;
 
-    constructor(node: Node, opts: any) {
+    constructor(node: Node, opts: ClientSocketsOptions) {
         super();
 
         this.opts = opts || {};
@@ -196,5 +203,3 @@ class ClientSockets extends EventEmitter {
         }
     }
 }
-
-export = ClientSockets;

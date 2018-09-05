@@ -1,5 +1,5 @@
 // import StorageSpace from "./storage-space";
-import ContentsClient from "@noia-network/node-contents-client";
+import { ContentsClient } from "@noia-network/node-contents-client";
 
 const storageDir = "tests/storage";
 // const dataDir = "tests/storage/data";

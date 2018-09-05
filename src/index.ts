@@ -1,13 +1,13 @@
-import ContentsClient from "@noia-network/node-contents-client";
 import EventEmitter from "events";
+import { ContentsClient } from "@noia-network/node-contents-client";
 import { LoggerInstance } from "winston";
 
-import ClientSockets from "./lib/client-sockets";
 import Master from "./lib/master";
 import NodeController from "./lib/node-controller";
 import StorageSpace from "./lib/storage-space";
 import Wallet from "./lib/wallet";
 import localLogger from "./lib/logger";
+import { ClientSockets, ClientSocketsOptions } from "./lib/client-sockets";
 import { Helpers } from "./lib/helpers";
 import { Options, Settings } from "./lib/settings";
 import { Statistics } from "./lib/statistics";
@@ -20,7 +20,7 @@ class Node extends EventEmitter {
     public storageSpace: StorageSpace;
     public master: Master;
     public clientSockets: ClientSockets;
-    public contentsClient: any;
+    public contentsClient: ContentsClient;
     public wallet: Wallet;
     public nodeController: undefined | NodeController;
     public statistics: Statistics;
@@ -182,32 +182,33 @@ class Node extends EventEmitter {
     }
 
     getClientSocketsOptions(options: any) {
-        const clientSocketsOpts: any = {};
-        clientSocketsOpts.natPmp = options(Options.natPmp);
-        clientSocketsOpts.http = options(Options.http)
-            ? {
-                  ip: options(Options.httpIp),
-                  port: options(Options.httpPort)
-              }
-            : false;
-        clientSocketsOpts.ws = options(Options.ws)
-            ? {
-                  ip: options(Options.wsIp),
-                  port: options(Options.wsPort),
-                  ssl: options(Options.ssl),
-                  ssl_key: options(Options.sslPrivateKeyPath),
-                  ssl_cert: options(Options.sslCrtPath),
-                  ssl_ca: options(Options.sslCrtBundlePath)
-              }
-            : false;
-        clientSocketsOpts.wrtc = options(Options.wrtc)
-            ? {
-                  controlPort: options(Options.wrtcControlPort),
-                  controlIp: options(Options.wrtcControlIp),
-                  dataPort: options(Options.wrtcDataPort),
-                  dataIp: options(Options.wrtcDataIp)
-              }
-            : false;
+        const clientSocketsOpts: ClientSocketsOptions = {
+            natPmp: options(Options.natPmp),
+            http: options(Options.http)
+                ? {
+                      ip: options(Options.httpIp),
+                      port: options(Options.httpPort)
+                  }
+                : false,
+            ws: options(Options.ws)
+                ? {
+                      ip: options(Options.wsIp),
+                      port: options(Options.wsPort),
+                      ssl: options(Options.ssl),
+                      ssl_key: options(Options.sslPrivateKeyPath),
+                      ssl_cert: options(Options.sslCrtPath),
+                      ssl_ca: options(Options.sslCrtBundlePath)
+                  }
+                : false,
+            wrtc: options(Options.wrtc)
+                ? {
+                      controlPort: options(Options.wrtcControlPort),
+                      controlIp: options(Options.wrtcControlIp),
+                      dataPort: options(Options.wrtcDataPort),
+                      dataIp: options(Options.wrtcDataIp)
+                  }
+                : false
+        };
         return clientSocketsOpts;
     }
 }

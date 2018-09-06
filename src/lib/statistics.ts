@@ -30,7 +30,7 @@ export class Statistics extends EventEmitter {
 
         this.filePath = statisticsPath;
 
-        logger.info(`Statistics filepath=${this.filePath}`);
+        logger.info(`Statistics filepath=${this.filePath}.`);
 
         if (!fs.existsSync(this.filePath)) {
             this._write({});
@@ -105,9 +105,9 @@ export class Statistics extends EventEmitter {
                     if (notified.includes(key)) return;
                     notified.push(key);
                     if (reverse) {
-                        if (DEBUG) logger.info(`Statistics configuration key=${key} oldValue=${s1[key]} newValue=${s2[key]}`);
+                        if (DEBUG) logger.info(`Statistics configuration key=${key} oldValue=${s1[key]} newValue=${s2[key]}.`);
                     } else {
-                        if (DEBUG) logger.info(`Statistics configuration key=${key} oldValue=${s2[key]} newValue=${s1[key]}`);
+                        if (DEBUG) logger.info(`Statistics configuration key=${key} oldValue=${s2[key]} newValue=${s1[key]}.`);
                     }
                     self.emit("changed", { key, value: s1[key] });
                 }

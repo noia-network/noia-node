@@ -1,10 +1,11 @@
 import EventEmitter from "events";
-import Node from "../index";
-import logger from "./logger";
-import { Options } from "./settings";
-import noiaGovernance from "@noia-network/governance";
 import extIP from "external-ip";
+import logger from "./logger";
+import noiaGovernance from "@noia-network/governance";
 import request from "request";
+
+import { Node } from "../index";
+import { Options } from "./settings";
 
 const getIP = extIP({
     replace: true,

@@ -1,7 +1,8 @@
 import WebSocket from "ws";
 import Wire from "@noia-network/protocol";
 import http from "http";
-import Node from "./index";
+
+import { Node } from "./index";
 
 const masterPort = 6565;
 const masterHost = "127.0.0.1";
@@ -60,8 +61,8 @@ it("starts and stops gracefully", done => {
             node.stop().then(() => done());
         }, 250);
     });
-    node.on("error", error => {
-        throw new Error(error);
+    node.on("error", (error: Error) => {
+        throw new Error(error.message);
     });
     node.start();
 });
@@ -74,8 +75,8 @@ it("listens and closes http connnection", done => {
         storageDir: storageDir,
         storageSize: 1048576
     });
-    node.on("error", error => {
-        throw new Error(error);
+    node.on("error", (error: Error) => {
+        throw new Error(error.message);
     });
     node.clientSockets.http.on("listening", (info: any) => {
         if (typeof info === "undefined") {
@@ -105,8 +106,8 @@ it("listens and closes master connection", done => {
             storageDir: storageDir,
             storageSize: 1048576
         });
-        node.on("error", error => {
-            throw new Error(error);
+        node.on("error", (error: Error) => {
+            throw new Error(error.message);
         });
         process.nextTick(() => {
             node.master.on("connected", (info: any) => {

@@ -3,7 +3,7 @@
         "target": "es6",
         "module": "commonjs",
         "lib": ["dom", "es7"],
-        "sourceMap": true,
+        "inlineSourceMap": true,
         "outDir": "dist",
         "strict": true,
         "noImplicitAny": true,

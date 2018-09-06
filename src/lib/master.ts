@@ -5,7 +5,7 @@ import path from "path";
 import randombytes from "randombytes";
 
 const dotenv = require("dotenv").config({ path: path.resolve(process.cwd(), ".env") });
-import Node from "../index";
+import { Node } from "../index";
 import logger from "./logger";
 const config = dotenv.error ? {} : dotenv.parsed;
 
@@ -71,6 +71,7 @@ class Master extends EventEmitter {
         if (!employerAddress && !skipBlockchain) {
             throw new Error("employerAddress null or undefined");
         }
+
         if (self.connected || self.destroyed || self.connecting) return;
         self.canReconnect = true;
         self.connecting = true;
@@ -163,8 +164,10 @@ class Master extends EventEmitter {
             });
             self._wire.once("error", (err: any) => {
                 logger.error("Could not connect to master", err);
+                self.connecting = false;
                 self.emit("error", err);
             });
+
             self._wire
                 .handshakeResult()
                 .then((info: any) => {
@@ -177,6 +180,7 @@ class Master extends EventEmitter {
                     });
                 })
                 .catch((info: any) => {
+                    console.info("handshakeResult() === rejected");
                     if (!self.connecting) return;
                     self.connecting = false;
                 });
@@ -202,21 +206,19 @@ class Master extends EventEmitter {
         self._wire = null;
     }
 
-    close() {
-        const self = this;
-
-        if (self.destroyed) throw new Error("master connection is already destroyed");
-        self.destroyed = true;
+    close(): Promise<void> {
+        if (this.destroyed) throw new Error("master connection is already destroyed");
+        this.destroyed = true;
 
         return new Promise((resolve, reject) => {
-            if (self.connected) {
-                self._wire.close();
-                self._onClosed(null);
+            if (this.connected) {
+                this._wire.close();
+                this._onClosed(null);
                 resolve();
-            } else if (self.connecting) {
-                self.on("connected", () => {
-                    self._wire.close();
-                    self._onClosed(null);
+            } else if (this.connecting) {
+                this.on("connected", () => {
+                    this._wire.close();
+                    this._onClosed(null);
                     resolve();
                 });
             } else {
@@ -226,21 +228,30 @@ class Master extends EventEmitter {
         });
     }
 
-    uploaded(infoHash: any, bandwidth: any, host: any, port: any) {
-        const self = this;
-        self._wire.uploaded(infoHash, bandwidth, host, port);
+    public uploaded(infoHash: string, bandwidth: any, host: any, port: any) {
+        if (!this.connected) {
+            logger.warn("uploaded() called when not connected to master...");
+            return;
+        }
+        this._wire.uploaded(infoHash, bandwidth, host, port);
     }
 
-    metadata(params: { [key: string]: any }) {
-        const self = this;
-        logger.info(`Notifying master (${self._wire.address}) on changed metadata=`, params);
-        self._wire.metadata(params);
+    public metadata(params: { [key: string]: any }) {
+        if (!this.connected) {
+            logger.warn("metadata() called when not connected to master...");
+            return;
+        }
+        logger.info(`Notifying master (${this._wire.address}) on changed metadata=`, params);
+        this._wire.metadata(params);
     }
 
-    seeding(infoHashes: any) {
-        const self = this;
-        logger.info(`Notifying master (${self._wire.address}) delivering ${infoHashes.length} content(s)=${infoHashes}`);
-        self._wire.seeding(infoHashes);
+    public seeding(infoHashes: string[]) {
+        if (!this.connected) {
+            logger.warn("seeding() called when not connected to master...");
+            return;
+        }
+        logger.info(`Notifying master (${this._wire.address}) delivering ${infoHashes.length} content(s)=${infoHashes}`);
+        this._wire.seeding(infoHashes);
     }
 
     _registerEvents() {

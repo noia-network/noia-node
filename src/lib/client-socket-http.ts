@@ -2,28 +2,20 @@ import EventEmitter from "events";
 import express from "express";
 import fs from "fs";
 import http from "http";
-// import { Transform } from "stream";
 import mime from "mime-types";
 import path from "path";
+import { Server } from "http";
 
 import logger from "./logger";
-import Node from "../index";
+import { Node } from "../index";
 
 const app = express();
-
-// const test = new Transform({
-//     transform(chunk: any, encoding: any, callback: any) {
-//         console.log("chunk", chunk.length);
-//         this.push(chunk);
-//         callback();
-//     }
-// });
 
 class ClientSocketHttp extends EventEmitter {
     public port: any;
     public ip: any;
     public app: any;
-    public server: any;
+    public server: Server;
     public type: any;
     public info: any;
     public queue: any;
@@ -60,7 +52,7 @@ class ClientSocketHttp extends EventEmitter {
         app.use(express.static(path.join(__dirname, directory)));
     }
 
-    listen() {
+    listen(): Promise<void> {
         // let sum = 0
         const self = this;
 
@@ -154,18 +146,25 @@ class ClientSocketHttp extends EventEmitter {
                 }
             });
         }
+        return new Promise<void>((resolve, reject) => {
+            this.server.listen(this.port, this.ip, (err: Error) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
 
-        this.server.listen(this.port, this.ip, () => {
-            this.listening = true;
-            this.info = this.server.address();
-            const listeningInfo = {
-                type: this.type,
-                port: this.info.port,
-                ip: this.info.address,
-                family: this.info.family
-            };
-            this.emit("listening", listeningInfo);
-            logger.info("Listening for HTTP requests on port 7676", listeningInfo);
+                this.listening = true;
+                this.info = this.server.address();
+                const listeningInfo = {
+                    type: this.type,
+                    port: this.info.port,
+                    ip: this.info.address,
+                    family: this.info.family
+                };
+                this.emit("listening", listeningInfo);
+                resolve();
+                logger.info("Listening for HTTP requests on port 7676", listeningInfo);
+            });
         });
     }
 
@@ -182,7 +181,7 @@ class ClientSocketHttp extends EventEmitter {
         self.queue.push(info);
     }
 
-    close() {
+    public close(): Promise<any> {
         return new Promise((resolve, reject) => {
             if (this.listening) {
                 this.server.close();

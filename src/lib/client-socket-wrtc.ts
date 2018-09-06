@@ -1,7 +1,8 @@
 import EventEmitter from "events";
-import Node from "../index";
-import logger from "./logger";
 import { WebRtcDirect, Channel } from "@noia-network/webrtc-direct-server";
+
+import logger from "./logger";
+import { Node } from "../index";
 
 class ClientSocketWrtc extends EventEmitter {
     public controlPort: number;
@@ -25,7 +26,6 @@ class ClientSocketWrtc extends EventEmitter {
 
         this.wrtc = new WebRtcDirect(this.controlPort, this.dataPort, this.controlIp, this.dataIp);
 
-        logger.warn("connection listener added");
         this.wrtc.on("connection", (channel: Channel) => {
             logger.info(`[${channel.id}] ip=${this.filterIp(channel)}, clients=${this.countChannels(this.wrtc.channels)}`);
             this.emit("connections", this.countChannels(this.wrtc.channels));

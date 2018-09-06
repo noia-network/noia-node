@@ -7,8 +7,8 @@ import randombytes from "randombytes";
 import { Server as HttpServer } from "http";
 import { Server as HttpsServer } from "https";
 
-import Node from "../index";
 import logger from "./logger";
+import { Node } from "../index";
 
 export interface ClientSocketWsOptions {
     ip: string;
@@ -131,26 +131,28 @@ export class ClientSocketWs extends EventEmitter {
     }
 
     listen() {
-        const self = this;
-        this.server.listen(this.port, this.ip, (err: any) => {
-            if (err) {
-                console.log("received listen err");
-                throw new Error(err);
-            }
+        return new Promise<void>((resolve, reject) => {
+            this.server.listen(this.port, this.ip, (err: any) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
 
-            this.info = this.server.address();
-            this.emit("listening", {
-                type: this.type,
-                port: this.info.port,
-                ip: this.info.address,
-                family: this.info.family,
-                ssl: this.ssl
+                this.info = this.server.address();
+                this.emit("listening", {
+                    type: this.type,
+                    port: this.info.port,
+                    ip: this.info.address,
+                    family: this.info.family,
+                    ssl: this.ssl
+                });
+                logger.info(
+                    `Listening for clients connections type=${this.ssl === true ? "wss" : "ws"} ip=${this.info.address} port=${
+                        this.info.port
+                    } family=${this.info.family}`
+                );
+                resolve();
             });
-            logger.info(
-                `Listening for clients connections type=${this.ssl === true ? "wss" : "ws"} ip=${this.info.address} port=${
-                    this.info.port
-                } family=${this.info.family}`
-            );
         });
     }
 
@@ -212,7 +214,7 @@ export class ClientSocketWs extends EventEmitter {
         throw new Error(err.message);
     }
 
-    close() {
+    public close(): Promise<any> {
         const _close = (resolve: any) => {
             this.wss.clients.forEach((ws: any) => ws.close());
             this.server.close(() => {

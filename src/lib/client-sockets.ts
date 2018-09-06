@@ -2,7 +2,7 @@ import EventEmitter from "events";
 
 import ClientSocketHttp from "./client-socket-http";
 import ClientSocketWrtc from "./client-socket-wrtc";
-import Node from "../index";
+import { Node } from "../index";
 import logger from "./logger";
 import { ClientSocketWs, ClientSocketWsOptions } from "./client-socket-ws";
 import { NatPmp, DEFAULT_TTL } from "./nat-pmp";
@@ -111,95 +111,91 @@ export class ClientSockets extends EventEmitter {
         }
     }
 
-    listen() {
+    listen(): Promise<Promise<void>[][]> {
+        const promises: Promise<void>[] = [];
+
         if (this.opts.http && !this.http.listening) {
-            this.http.listen();
+            promises.push(this.http.listen());
         }
 
         if (this.opts.ws && !this.ws.server.listening) {
-            this.ws.listen();
+            promises.push(this.ws.listen());
         }
 
         if (this.opts.wrtc && !this.wrtc.wrtc.server.listening) {
-            this.wrtc.listen();
+            promises.push(this.wrtc.listen());
         }
+
+        return Promise.all([promises]);
     }
 
-    close() {
-        const self = this;
-
-        Promise.all([_closeHttp(), _closeWs(), _closeWrtc()]).then(() => {
-            // self.emit("destroyed")
-            // self.emit("closed")
-        });
-
-        function _closeHttp() {
-            return new Promise((resolve, reject) => {
-                if (self.http && self.http.listening) {
-                    if (self.http.listening) {
-                        self.http.close().then((info: any) => {
-                            self.emit("closed", info);
-                            resolve(info);
-                        });
+    async close(): Promise<[any, any, any]> {
+        const closeHttp = () => {
+            return new Promise<any>(async (resolve, reject) => {
+                if (this.http && this.http.listening) {
+                    if (this.http.listening) {
+                        const info = await this.http.close();
+                        this.emit("closed", info);
+                        resolve(info);
                     } else {
-                        self.http.once("listening", (info: any) => {
-                            if (self.http)
-                                self.http.close().then((info: any) => {
-                                    self.emit("closed", info);
-                                    resolve(info);
-                                });
+                        this.http.once("listening", async (info: any) => {
+                            if (this.http) {
+                                const info = await this.http.close();
+                                this.emit("closed", info);
+                                resolve(info);
+                            }
                         });
                     }
                 } else {
                     resolve();
                 }
             });
-        }
+        };
 
-        function _closeWs() {
-            return new Promise((resolve, reject) => {
-                if (self.ws && self.ws.server.listening) {
-                    if (self.ws.server.listening) {
-                        self.ws.close().then((info: any) => {
-                            self.emit("closed", info);
-                            resolve(info);
-                        });
+        const closeWs = () => {
+            return new Promise<any>(async (resolve, reject) => {
+                if (this.ws && this.ws.server.listening) {
+                    if (this.ws.server.listening) {
+                        const info = await this.ws.close();
+                        this.emit("closed", info);
+                        resolve(info);
                     } else {
-                        self.ws.once("listening", () => {
-                            if (self.ws)
-                                self.ws.close().then((info: any) => {
-                                    self.emit("closed", info);
-                                    resolve(info);
-                                });
+                        this.ws.once("listening", async () => {
+                            if (this.ws) {
+                                const info = await this.ws.close();
+                                this.emit("closed", info);
+                                resolve(info);
+                            }
                         });
                     }
                 } else {
                     resolve();
                 }
             });
-        }
+        };
 
-        function _closeWrtc() {
-            return new Promise((resolve, reject) => {
-                if (self.wrtc && self.wrtc.wrtc.server.listening) {
-                    if (self.wrtc.wrtc.server.listening) {
-                        self.wrtc.close().then((info: any) => {
-                            self.emit("closed", info);
-                            resolve(info);
-                        });
+        const closeWrtc = () => {
+            return new Promise<any>(async (resolve, reject) => {
+                if (this.wrtc && this.wrtc.wrtc.server.listening) {
+                    if (this.wrtc.wrtc.server.listening) {
+                        const info = await this.wrtc.close();
+                        this.emit("closed", info);
+                        resolve(info);
                     } else {
-                        self.wrtc.once("listening", () => {
-                            if (self.wrtc)
-                                self.wrtc.close().then((info: any) => {
-                                    self.emit("closed", info);
-                                    resolve(info);
-                                });
+                        this.wrtc.once("listening", async () => {
+                            if (this.wrtc) {
+                                const info = await this.wrtc.close();
+                                this.emit("closed", info);
+                                resolve(info);
+                            }
                         });
                     }
                 } else {
                     resolve();
                 }
             });
-        }
+        };
+
+        return Promise.all([closeHttp(), closeWs(), closeWrtc()]);
     }
 }

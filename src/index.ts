@@ -12,7 +12,7 @@ import { Helpers } from "./lib/helpers";
 import { Options, Settings } from "./lib/settings";
 import { Statistics } from "./lib/statistics";
 
-class Node extends EventEmitter {
+export class Node extends EventEmitter {
     private opts: any;
     public logger: LoggerInstance = localLogger;
     public settings: Settings;
@@ -41,15 +41,16 @@ class Node extends EventEmitter {
             this.nodeController = new NodeController(this);
         }
 
-        this.contentsClient.on("seeding", (infoHashes: string[]) => {
+        const contentsClientSeedingListener = (infoHashes: string[]) => {
             this.master.seeding(infoHashes);
             this.storageSpace.stats().then(info => {
                 this.master.metadata({ storage: info });
             });
-        });
+        };
+
         this.master.on("connected", () => {
-            this.contentsClient.start();
-            this.clientSockets.listen();
+            this.master.seeding(this.contentsClient.getInfoHashes());
+            this.contentsClient.addListener("seeding", contentsClientSeedingListener);
             Promise.all([this.storageSpace.stats(), Helpers.getSpeedTest()])
                 .then(results => {
                     this.master.metadata({ storage: results[0], speedTest: results[1] });
@@ -63,6 +64,7 @@ class Node extends EventEmitter {
             this.emit("error", err);
         });
         this.master.on("closed", info => {
+            this.contentsClient.removeListener("seeding", contentsClientSeedingListener);
             this.stop();
         });
         this.clientSockets.on("error", (err: any) => {
@@ -81,31 +83,35 @@ class Node extends EventEmitter {
         });
     }
 
-    setWallet(walletAddress: string): void {
+    public setWallet(walletAddress: string): void {
         this.settings.update(this.settings.Options.walletAddress, walletAddress);
     }
 
-    getBalance(): Promise<number> {
+    public getBalance(): Promise<number> {
         return this.wallet.getBalance();
     }
 
-    getEthBalance(): Promise<number> {
+    public getEthBalance(): Promise<number> {
         return this.wallet.getEthBalance();
     }
 
-    setStorageSpace(dir: any, allocated: any) {
+    public setStorageSpace(dir: any, allocated: any) {
         if (dir) this.settings.update(Options.storageDir, dir);
         if (allocated) this.settings.update(Options.storageSize, allocated);
     }
 
-    start(opts?: any) {
+    public async start(opts?: any) {
         opts = opts || {};
 
         if (!this.storageSpace) return this.emit("error", new Error("storageSpace not set"));
         if (!this.clientSockets) return this.emit("error", new Error("clientSockets not set"));
 
+        this.contentsClient.start();
+        await this.clientSockets.listen();
+
         const skipBlockain = this.settings.get(Options.skipBlockchain);
         if (skipBlockain) {
+            console.info("calling start() master.connect");
             this.master.connect(
                 this.settings.get(Options.masterAddress),
                 null
@@ -135,53 +141,40 @@ class Node extends EventEmitter {
             });
         }
 
-        process.nextTick(() => {
+        process.nextTick(async () => {
             this.emit("started");
         });
     }
 
-    stop(cb?: any) {
-        const promises: any = [];
-
-        promises.push(this.clientSockets.close());
+    public async stop(cb?: any): Promise<void> {
         this.master.disconnect();
+        await this.clientSockets.close();
         this.contentsClient.stop();
 
-        return new Promise((resolve, _) => {
-            Promise.all(promises).then(() => {
-                resolve();
-                this.emit("stopped");
-                if (typeof cb === "function") {
-                    cb();
-                }
-            });
-        });
-    }
-
-    restart() {
-        this.logger.warn("Restarting node...");
-        this.stop().then(() => this.start());
-    }
-
-    destroy(cb: any) {
-        const promises: any = [];
-        promises.push(this.master.close());
-        if (this.contentsClient) {
-            promises.push(this.contentsClient.destroy());
+        this.emit("stopped");
+        if (typeof cb === "function") {
+            cb();
         }
-
-        return new Promise((resolve, reject) => {
-            Promise.all(promises).then(() => {
-                resolve();
-                this.emit("destroyed");
-                if (typeof cb === "function") {
-                    cb();
-                }
-            });
-        });
     }
 
-    getClientSocketsOptions(options: any) {
+    public async restart(): Promise<void> {
+        this.logger.warn("Restarting node...");
+        await this.stop();
+        await this.start();
+    }
+
+    public async destroy(cb: any): Promise<void> {
+        await this.master.close();
+        await this.clientSockets.close();
+        await this.contentsClient.destroy();
+
+        this.emit("destroyed");
+        if (typeof cb === "function") {
+            cb();
+        }
+    }
+
+    private getClientSocketsOptions(options: any) {
         const clientSocketsOpts: ClientSocketsOptions = {
             natPmp: options(Options.natPmp),
             http: options(Options.http)
@@ -212,5 +205,3 @@ class Node extends EventEmitter {
         return clientSocketsOpts;
     }
 }
-
-export = Node;

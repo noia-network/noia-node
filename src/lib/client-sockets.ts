@@ -32,7 +32,7 @@ class ClientSockets extends EventEmitter {
                     promises.push(natPmp.register("udp", this.opts.wrtc.dataPort));
                 }
                 if (this.opts.ws) {
-                    promises.push(natPmp.register("tcp", this.opts.ws.ip));
+                    promises.push(natPmp.register("tcp", this.opts.ws.port));
                 }
                 if (this.opts.http) {
                     promises.push(natPmp.register("tcp", this.opts.http.port));

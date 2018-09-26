@@ -228,6 +228,10 @@ class Master extends EventEmitter {
 
     metadata(params: { [key: string]: any }) {
         const self = this;
+        if (self._wire == null) {
+            logger.info(`Notifying master on changed metadata is skipped since master has gone away...`);
+            return;
+        }
         logger.info(`Notifying master (${self._wire.address}) on changed metadata=`, params);
         self._wire.metadata(params);
     }

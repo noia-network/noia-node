@@ -1,3 +1,14 @@
+declare module "default-gateway" {
+    interface gateway {
+        interface: any;
+        gateway: any;
+    }
+
+    const v4: {
+        sync: () => gateway;
+    };
+}
+
 declare module "nat-pmp" {
     interface PortMappingOpts {
         private: number;
@@ -29,7 +40,7 @@ declare module "nat-pmp" {
 }
 
 declare module "speedtest-net" {
-    interface Data {
+    export interface Data {
         speeds: {
             download: number;
             upload: number;
@@ -66,7 +77,7 @@ declare module "speedtest-net" {
         on(event: "error", listener: (error: Error) => void): this;
     }
     function speedTestNet(options?: { [key: string]: string | number }): SpeedTest;
-    export = speedTestNet;
+    export default speedTestNet;
 }
 
 declare module "randombytes" {
@@ -77,7 +88,76 @@ declare module "randombytes" {
 declare module "logdna-winston";
 declare module "swagger-ui-express";
 declare module "external-ip";
-declare module "@noia-network/governance";
+declare module "@noia-network/governance" {
+    interface InitOptions {
+        account: { mnemonic: string };
+        web3: { provider_url: string };
+    }
+    interface BusinessClientData {
+        host: string;
+        port: number;
+    }
+    interface JobPostOptions {}
+    interface NodeClientData {}
+
+    export class NoiaSdk {
+        init(initOptions: InitOptions): Promise<void>;
+        getOwnerAddress(): string;
+        isBusinessRegistered(businessClient: string): Promise<boolean>;
+        getBusinessClient(businessClientAddress: string): Promise<BusinessClient>;
+        createBusinessClient(businessClientData: BusinessClientData): Promise<BusinessClient>;
+        getEtherBalance(ownerAddress: string): Promise<number>;
+        getNoiaBalance(ownerAddress: string): Promise<number>;
+        transfer(from: string, to: string, amount: number): Promise<void>;
+        transferNoiaToken(workOrderAddress: string, amountWeis: number): Promise<void>;
+        isNodeRegistered(nodeClientAddress: string): Promise<boolean>;
+        getNodeClient(nodeClientAddress: string): Promise<NodeClient>;
+        recoverAddressFromRpcSignedMessage(msg: string, msgSigned: string): string;
+        getBaseClient(): Promise<BaseClient>;
+        getJobPost(jobPostAddress: string): Promise<JobPost>;
+        noiaTokensToWeis(amountNoia: number): number;
+        createNodeClient(nodeClientData: NodeClientData): Promise<NodeClient>;
+    }
+
+    class BigNumber {
+        constructor(amount: string);
+    }
+    export class WorkOrder {
+        accept(): Promise<void>;
+        address: string;
+        delegatedAccept(nonce: number, sig: string): Promise<void>;
+        delegatedRelease(beneficiary: string, nonce: number, sig: string): Promise<void>;
+        generateSignedAcceptRequest(nonce: number): Promise<any>;
+        generateSignedReleaseRequest(walletAddress: string, nonce: number): Promise<any>;
+        getTimelockedEarliest(): Promise<any>;
+        hasTimelockedTokens(): Promise<boolean>;
+        isAccepted(): Promise<boolean>;
+        timelock(amount: BigNumber, time: number): Promise<any>;
+        totalFunds(): Promise<{ toNumber: () => number }>;
+        totalVested(): Promise<{ toNumber: () => number }>;
+        getJobPost(): JobPost;
+    }
+    export class BaseClient {
+        rpcSignMessage(msg: string): Promise<string>;
+        getWorkOrderAt(workOrderAddress: string): Promise<WorkOrder>;
+    }
+    export class NodeClient {
+        address: string;
+        getOwnerAddress(): string;
+    }
+    export class BusinessClient {
+        address: string;
+        info: BusinessClientData;
+        createJobPost(jobPostOptions: JobPostOptions): Promise<JobPost>;
+        getOwnerAddress(): string;
+    }
+    class JobPost {
+        address: string;
+        getEmployerAddress(): Promise<string>;
+        getWorkOrderAt(workOrderAddress: string): Promise<WorkOrder>;
+        createWorkOrder(workOrderAddress: string): Promise<WorkOrder>;
+    }
+}
 
 // FIXME: actually import "wrtc"
 declare module "wrtc" {

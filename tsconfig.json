@@ -1,17 +1,24 @@
 {
     "compilerOptions": {
-        "target": "es6",
-        "module": "commonjs",
-        "lib": ["dom", "es7"],
-        "inlineSourceMap": true,
-        "outDir": "dist",
-        "strict": true,
-        "noImplicitAny": true,
-        "moduleResolution": "node",
         "declaration": true,
         "esModuleInterop": true,
+        "importHelpers": true,
+        "inlineSourceMap": true,
+        "lib": ["dom", "es7"],
+        "module": "commonjs",
+        "moduleResolution": "node",
         "noEmitHelpers": true,
-        "importHelpers": true
+        "noImplicitAny": true,
+        "outDir": "dist",
+        "strict": true,
+        "target": "es6",
+        "plugins": [
+            {
+                "name": "tslint-language-service",
+                "alwaysShowRuleFailuresAsWarnings": true,
+                "ignoreDefinitionFiles": true
+            }
+        ]
     },
     "include": ["src/**/*"]
 }

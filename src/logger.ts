@@ -1,9 +1,9 @@
-import path from "path";
-const dotenv = require("dotenv").config({ path: path.resolve(process.cwd(), ".env") });
-const config = dotenv.error ? {} : dotenv.parsed;
 import "logdna-winston";
 import winston from "winston";
-// const path = module.filename.split("/").slice(-2).join("/");
+import { Helpers } from "./helpers";
+import { LoggerInstance } from "winston";
+
+const config = Helpers.getConfig();
 
 interface Options {
     transports: any;
@@ -43,7 +43,7 @@ if (config.LOG_TO_FILE === "yes") {
     // }))
 }
 
-if (config.LOGDNA_API_KEY) {
+if (config.LOGDNA_API_KEY != null) {
     const settings: any = {
         app: "Node",
         handleExceptions: true,
@@ -57,4 +57,6 @@ if (config.LOGDNA_API_KEY) {
     options.transports.push(new (winston.transports as any).Logdna(settings));
 }
 
-export = new winston.Logger(options);
+export let logger = new winston.Logger(options);
+
+export type Logger = LoggerInstance;

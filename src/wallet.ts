@@ -365,7 +365,7 @@ export class Wallet extends EventEmitter {
 
     public async doWork(workOrder: WorkOrder): Promise<void> {
         const timeLock = await workOrder.getTimelockedEarliest();
-        logger.info(`Node is doing work: time-lock:${timeLock}.`);
+        logger.info(`Node is doing work: time-lock-amount=${timeLock.amount}, time-locket-until:${timeLock.until}.`);
         if (timeLock == null) {
             logger.error("No initial earliest time lock, disconnecting from master.");
             this.node.master.close();

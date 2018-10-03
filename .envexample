@@ -1,1 +1,1 @@
-LOG_FILES_SILENT=yes
+LOG_TO_FILE=yes

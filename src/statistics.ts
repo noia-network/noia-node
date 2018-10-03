@@ -1,66 +1,54 @@
 import EventEmitter from "events";
 import fs from "fs";
 import jsonfile from "jsonfile";
-import path from "path";
 
-import logger from "./logger";
+import { logger } from "./logger";
 
 const DEBUG = false;
 
-export enum StatisticsOptions {
+export enum StatisticsEnum {
     totalTimeConnected = "total.timeConnected",
     totalDownloaded = "total.downloaded",
     totalUploaded = "total.uploaded"
 }
 
-interface StatisticsOpts {
-    totalTimeConnected: number;
-    totalDownloaded: number;
-    totalUploaded: number;
+interface StatisticsOptions {
+    [StatisticsEnum.totalTimeConnected]: number;
+    [StatisticsEnum.totalDownloaded]: number;
+    [StatisticsEnum.totalUploaded]: number;
 }
 
 export class Statistics extends EventEmitter {
-    public filePath: string;
-    public statistics: any;
-    public ready: boolean;
-    public Options = StatisticsOptions;
+    public readonly ready: boolean = false;
+    public statistics: StatisticsOptions;
 
-    constructor(statisticsPath: string) {
+    constructor(public readonly filePath: string) {
         super();
 
-        this.filePath = statisticsPath;
-
-        logger.info(`Statistics filepath=${this.filePath}`);
+        logger.info(`Loaded statistics filepath=${this.filePath}.`);
 
         if (!fs.existsSync(this.filePath)) {
             this._write({});
+            this.statistics = this.read();
+            this.statistics = this.read();
         } else {
             try {
-                const savedStatistics = JSON.parse(JSON.stringify(this._read()));
+                this.statistics = JSON.parse(JSON.stringify(this.read()));
             } catch (ex) {
                 this._write({});
+                this.statistics = this.read();
             }
         }
 
-        this.statistics = this._read();
-
-        this.update(StatisticsOptions.totalTimeConnected, this.statistics[StatisticsOptions.totalTimeConnected], 0);
-        this.update(StatisticsOptions.totalDownloaded, this.statistics[StatisticsOptions.totalDownloaded], 0);
-        this.update(StatisticsOptions.totalUploaded, this.statistics[StatisticsOptions.totalUploaded], 0);
+        this.update(StatisticsEnum.totalTimeConnected, this.statistics[StatisticsEnum.totalTimeConnected], 0);
+        this.update(StatisticsEnum.totalDownloaded, this.statistics[StatisticsEnum.totalDownloaded], 0);
+        this.update(StatisticsEnum.totalUploaded, this.statistics[StatisticsEnum.totalUploaded], 0);
 
         this.ready = true;
     }
 
-    get(key: StatisticsOptions) {
-        if (key) {
-            return this.statistics[key];
-        } else {
-            return this.statistics;
-        }
-    }
-
-    update(key: StatisticsOptions, value: any, defaultValue?: any) {
-        const statistics = this._read();
+    public update(key: StatisticsEnum, value: any, defaultValue?: any): void {
+        const statistics = this.read();
         if (isMeaningful(value) && statistics[key] !== value) {
             statistics[key] = value;
             this._write(statistics);
@@ -76,16 +64,14 @@ export class Statistics extends EventEmitter {
         }
     }
 
-    remove(key: StatisticsOptions) {
-        const statistics = this._read();
+    public remove(key: StatisticsEnum): void {
+        const statistics = this.read();
         delete statistics[key];
         this._write(statistics);
     }
 
-    _write(statistics: any) {
-        const self = this;
-        const notified: string[] = [];
-        const checkChanged = (s1: any, s2: any, notified: string[], reverse: boolean = false) => {
+    private _write(statistics: any): void {
+        const checkChanged = (s1: any, s2: any, reverse: boolean = false, notified: string[] = []) => {
             if (typeof s1 === "undefined" || s1 === null) {
                 return;
             }
@@ -102,31 +88,37 @@ export class Statistics extends EventEmitter {
                     isSame = s1[key] === s2[key];
                 }
                 if (!isSame) {
-                    if (notified.includes(key)) return;
+                    if (notified.includes(key)) {
+                        return;
+                    }
                     notified.push(key);
                     if (reverse) {
-                        if (DEBUG) logger.info(`Statistics configuration key=${key} oldValue=${s1[key]} newValue=${s2[key]}`);
+                        if (DEBUG) {
+                            logger.info(`Statistics configuration key=${key} oldValue=${s1[key]} newValue=${s2[key]}.`);
+                        }
                     } else {
-                        if (DEBUG) logger.info(`Statistics configuration key=${key} oldValue=${s2[key]} newValue=${s1[key]}`);
+                        if (DEBUG) {
+                            logger.info(`Statistics configuration key=${key} oldValue=${s2[key]} newValue=${s1[key]}.`);
+                        }
                     }
-                    self.emit("changed", { key, value: s1[key] });
+                    this.emit("changed", { key, value: s1[key] });
                 }
             });
         };
 
-        checkChanged(statistics, this.statistics, notified, false);
-        checkChanged(this.statistics, statistics, notified, true);
+        checkChanged(statistics, this.statistics);
+        checkChanged(this.statistics, statistics, true);
 
         jsonfile.writeFileSync(this.filePath, statistics, { spaces: 2 });
         this.statistics = statistics;
     }
 
-    _read() {
+    private read(): StatisticsOptions {
         return jsonfile.readFileSync(this.filePath);
     }
 }
 
-function isMeaningful(value: any) {
+function isMeaningful(value: any): boolean {
     if (value !== null && typeof value !== "undefined" && value !== "") {
         return true;
     } else {

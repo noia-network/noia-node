@@ -3,7 +3,7 @@
         "tag": "alpha"
     },
     "name": "@noia-network/node",
-    "version": "1.0.0-alpha.2",
+    "version": "1.0.0-alpha.3",
     "description": "NOIA Node core.",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",

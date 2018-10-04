@@ -1,12 +1,15 @@
+import * as protobuf from "protobufjs";
 import EventEmitter from "events";
 import StrictEventEmitter from "strict-event-emitter-types";
 import { WebRtcDirect, Channel } from "@noia-network/webrtc-direct-server";
+import { Wire } from "@noia-network/protocol";
+// TODO: Export.
+import { Content } from "@noia-network/node-contents-client/dist/content";
 
 import { Node } from "./node";
 import { ClientSocketEvents, ResourceSent, SocketType, ClientRequestData } from "./contracts";
 import { SettingsEnum } from "./settings";
 import { logger } from "./logger";
-import { Content } from "@noia-network/node-contents-client/dist/content";
 
 export interface ClientSocketWrtcOptions {
     controlPort: number;
@@ -22,6 +25,7 @@ export class ClientSocketWrtc extends (EventEmitter as { new (): ClientSocketEmi
     public wrtc: WebRtcDirect;
     public queue: ResourceSent[] = [];
     private queueInterval: number = 3000;
+    private contentResponseType?: protobuf.Type;
 
     constructor(
         private readonly node: Node,
@@ -33,6 +37,19 @@ export class ClientSocketWrtc extends (EventEmitter as { new (): ClientSocketEmi
         super();
         this.controlPort = controlPort || node.settings.options[SettingsEnum.wrtcControlPort];
         this.dataPort = dataPort || node.settings.options[SettingsEnum.wrtcDataPort];
+
+        // TODO: Refactor.
+        protobuf.load(Wire.getProtoFilePath(), (err, root) => {
+            if (err) {
+                logger.error("Error has occured while loading protobuf:", err);
+                return;
+            }
+            if (root == null) {
+                logger.error("Error has occured while loading protobuf:", err);
+                return;
+            }
+            this.contentResponseType = root.lookupType("ContentResponse");
+        });
 
         this.wrtc = new WebRtcDirect(this.controlPort, this.dataPort, this.controlIp, this.dataIp);
         this.wrtc.on("connection", (channel: Channel) => {
@@ -125,13 +142,22 @@ export class ClientSocketWrtc extends (EventEmitter as { new (): ClientSocketEmi
     }
 
     private async handleMessage(channel: Channel, params: Partial<ClientRequestData>): Promise<void> {
+        if (this.contentResponseType == null) {
+            logger.error("Property 'contentResponseType' is invalid.");
+            return;
+        }
+
         if (params.index == null || params.offset == null || params.contentId == null) {
             const responseMsg = `WebRtc client client-id=${channel.id} bad request content-id=${params.contentId} index=${
                 params.index
             } offset=${params.offset} length=${0}.`;
             logger.error(responseMsg);
-            this.responseError(channel, 400, responseMsg);
-
+            const msg = this.contentResponseType.create({
+                status: 400,
+                error: responseMsg
+            });
+            logger.error(responseMsg);
+            this.response(channel, this.contentResponseType.encode(msg).finish());
             return;
         }
 
@@ -139,22 +165,35 @@ export class ClientSocketWrtc extends (EventEmitter as { new (): ClientSocketEmi
 
         if (content == null) {
             const responseMsg = `WebRTC client client-id=${channel.id} 404 response content-id=${params.contentId}.`;
+            const msg = this.contentResponseType.create({
+                status: 404,
+                error: responseMsg
+            });
             logger.error(responseMsg);
-            this.responseError(channel, 404, responseMsg);
+            this.response(channel, this.contentResponseType.encode(msg).finish());
             return;
         }
 
         try {
-            const resBuff = await content.getResponseBuffer(params.index, params.offset, 0);
+            const response = await content.getResponseBuffer(params.index, params.offset, 0);
             // TODO: write test so this debug info would never be required.
             // logger.info(`[${channel.id}] response infoHash=${infoHash} index=${piece} offset=${offset} length=${resBuff.length}`);
-            queueEvent(this, this.filterIp(channel), params.contentId, resBuff.length);
+            queueEvent(this, this.filterIp(channel), params.contentId, response.buffer.length);
             if (channel.dc == null) {
                 logger.warn("Data channel is invalid or does not exist.");
                 return;
             }
-            channel.dc.send(resBuff);
-            content.emit("uploaded", resBuff.length);
+            const msg = this.contentResponseType.create({
+                data: {
+                    contentId: params.contentId,
+                    offset: params.offset,
+                    index: params.index,
+                    buffer: response.buffer
+                },
+                status: 200
+            });
+            this.response(channel, this.contentResponseType.encode(msg).finish());
+            content.emit("uploaded", response.buffer.length);
         } catch (err) {
             // TODO: log property or just ignore.
             logger.warn("Error while sending content:", err);
@@ -174,28 +213,15 @@ export class ClientSocketWrtc extends (EventEmitter as { new (): ClientSocketEmi
         }
     }
 
-    public response(channel: Channel, buffer: Buffer): void {
+    public response(channel: Channel, typedArray: Uint8Array): void {
         try {
             if (channel.dc != null) {
-                channel.dc.send(buffer);
+                channel.dc.send(typedArray);
             }
         } catch (e) {
             // TODO: log property or just ignore.
             logger.warn("Send content", e);
         }
-    }
-
-    public responseError(channel: Channel, statusCode: number, errorMsg: string): void {
-        const codeBuffer = Buffer.allocUnsafe(2);
-        codeBuffer.writeUInt16BE(statusCode, 0);
-        const msgBuffer = Buffer.from(errorMsg);
-        this.response(channel, Buffer.concat([codeBuffer, msgBuffer]));
-    }
-
-    public responseSuccess(channel: Channel, buffer: Buffer): void {
-        const codeBuffer = Buffer.allocUnsafe(2);
-        codeBuffer.writeUInt16BE(200, 0);
-        this.response(channel, Buffer.concat([codeBuffer, buffer]));
     }
 
     private handleError(err: Error): void {

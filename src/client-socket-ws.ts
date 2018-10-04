@@ -1,3 +1,4 @@
+import * as protobuf from "protobufjs";
 import EventEmitter from "events";
 import StrictEventEmitter from "strict-event-emitter-types";
 import WebSocket from "ws";
@@ -14,6 +15,7 @@ import { ClientSocketEvents, ResourceSent, SocketType, ClientRequestData, Client
 import { SettingsEnum } from "./settings";
 import { logger } from "./logger";
 import { Content } from "@noia-network/node-contents-client/dist/content";
+import { Wire } from "@noia-network/protocol";
 
 export interface ClientSocketWsOptions {
     ip: string;
@@ -34,12 +36,26 @@ export class ClientSocketWs extends (EventEmitter as { new (): ClientSocketEmitt
     public wss: WebSocket.Server;
     public queue: ResourceSent[] = [];
     private queueInterval: number = 3000;
+    private contentResponseType?: protobuf.Type;
 
     constructor(private readonly node: Node, public port: number, public ip: string = "0.0.0.0", public opts: ClientSocketWsOptions) {
         super();
         this.ssl = this.opts != null && this.opts.ssl === true;
         this.protocolPrefix = this.ssl === true ? "WebSocket (secure)" : "WebSocket";
         this.port = port || node.settings.options[SettingsEnum.wsPort];
+
+        // TODO: Refactor.
+        protobuf.load(Wire.getProtoFilePath(), (err, root) => {
+            if (err) {
+                logger.error("Error has occured while loading protobuf:", err);
+                return;
+            }
+            if (root == null) {
+                logger.error("Error has occured while loading protobuf:", err);
+                return;
+            }
+            this.contentResponseType = root.lookupType("ContentResponse");
+        });
 
         this.server =
             this.ssl === true
@@ -165,30 +181,56 @@ export class ClientSocketWs extends (EventEmitter as { new (): ClientSocketEmitt
     }
 
     private async handleMessage(ws: WebSocket, params: Partial<ClientRequestData>, ip: string, debugId: string): Promise<void> {
+        if (this.contentResponseType == null) {
+            logger.error("Property 'contentResponseType' is invalid.");
+            return;
+        }
+
+        // const errMsg = this.contentResponseType.verify(payload);
+        // if (errMsg) {
+        //     throw Error(errMsg);
+        // }
+
         if (params.index == null || params.offset == null || params.contentId == null) {
             const responseMsg = `${this.protocolPrefix} client client-id=${debugId} bad request content-id=${params.contentId} index=${
                 params.index
             } offset=${params.offset} length=${0}.`;
+            const msg = this.contentResponseType.create({
+                status: 400,
+                error: responseMsg
+            });
             logger.error(responseMsg);
-            this.responseError(ws, 400, responseMsg);
+            this.response(ws, this.contentResponseType.encode(msg).finish());
             return;
         }
 
         const content = this.node.contentsClient.get(params.contentId) as Content;
         if (content == null) {
             const responseMsg = `${this.protocolPrefix} client client-id=${debugId} 404 response content-id=${params.contentId}.`;
+            const msg = this.contentResponseType.create({
+                status: 404,
+                error: responseMsg
+            });
             logger.error(responseMsg);
-            this.responseError(ws, 404, responseMsg);
+            this.response(ws, this.contentResponseType.encode(msg).finish());
             return;
         }
 
         try {
-            const resBuff = await content.getResponseBuffer(params.index, params.offset, 0);
+            const response = await content.getResponseBuffer(params.index, params.offset, 0);
             // debug(`[${debugId}] response infoHash=${infoHash} index=${piece} offset=${offset} length=${dataBuf.length}`)
-            queueEvent(this, ip, params.contentId, resBuff.length);
-            // ws.send(resBuff);
-            this.responseSuccess(ws, resBuff);
-            content.emit("uploaded", resBuff.length);
+            queueEvent(this, ip, params.contentId, response.buffer.length);
+            const msg = this.contentResponseType.create({
+                data: {
+                    contentId: params.contentId,
+                    offset: params.offset,
+                    index: params.index,
+                    buffer: response.buffer
+                },
+                status: 200
+            });
+            this.response(ws, this.contentResponseType.encode(msg).finish());
+            content.emit("uploaded", response.buffer.length);
         } catch (e) {
             // TODO: log property or just ignore.
             logger.warn("Error while sending content:", e);
@@ -208,26 +250,13 @@ export class ClientSocketWs extends (EventEmitter as { new (): ClientSocketEmitt
         }
     }
 
-    public response(ws: WebSocket, buffer: Buffer): void {
+    public response(ws: WebSocket, typedArray: Uint8Array): void {
         try {
-            ws.send(buffer);
+            ws.send(typedArray);
         } catch (e) {
             // TODO: log property or just ignore.
             logger.warn("Send content", e);
         }
-    }
-
-    public responseError(ws: WebSocket, statusCode: number, errorMsg: string): void {
-        const codeBuffer = Buffer.allocUnsafe(2);
-        codeBuffer.writeUInt16BE(statusCode, 0);
-        const msgBuffer = Buffer.from(errorMsg);
-        this.response(ws, Buffer.concat([codeBuffer, msgBuffer]));
-    }
-
-    public responseSuccess(ws: WebSocket, buffer: Buffer): void {
-        const codeBuffer = Buffer.allocUnsafe(2);
-        codeBuffer.writeUInt16BE(200, 0);
-        this.response(ws, Buffer.concat([codeBuffer, buffer]));
     }
 
     private handleError(err: Error): never {

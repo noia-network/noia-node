@@ -217,7 +217,7 @@ export class ClientSocketWs extends (EventEmitter as { new (): ClientSocketEmitt
         }
 
         try {
-            const response = await content.getResponseBuffer(params.index, params.offset, 0);
+            const response = await content.getContentData(params.index, params.offset, 0);
             // debug(`[${debugId}] response infoHash=${infoHash} index=${piece} offset=${offset} length=${dataBuf.length}`)
             queueEvent(this, ip, params.contentId, response.buffer.length);
             const msg = this.contentResponseType.create({

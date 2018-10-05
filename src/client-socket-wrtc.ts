@@ -175,7 +175,7 @@ export class ClientSocketWrtc extends (EventEmitter as { new (): ClientSocketEmi
         }
 
         try {
-            const response = await content.getResponseBuffer(params.index, params.offset, 0);
+            const response = await content.getContentData(params.index, params.offset, 0);
             // TODO: write test so this debug info would never be required.
             // logger.info(`[${channel.id}] response infoHash=${infoHash} index=${piece} offset=${offset} length=${resBuff.length}`);
             queueEvent(this, this.filterIp(channel), params.contentId, response.buffer.length);

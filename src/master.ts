@@ -169,7 +169,6 @@ export class Master extends MasterEmitter implements ContentTransferer {
                 msgSigned: signedMsg,
                 ...nodeMetadata,
                 jobPostAddress: this.jobPostDesc.jobPostAddress,
-                // @ts-ignore
                 workOrderAddress: this.node.settings.options[SettingsEnum.workOrder]
             };
             logger.info("Sending metadata:", blockchainMetadata);
@@ -182,19 +181,8 @@ export class Master extends MasterEmitter implements ContentTransferer {
                         throw new Error("Value of 'jobPostDescription' is invalid.");
                     }
                     logger.info(`Received metadata`, receivedMetadata);
-                    // TODO: signatures aren't optional.
                     const recoveredAddress = this.node.wallet.recoverAddress(receivedMetadata.msg, receivedMetadata.msgSigned);
-                    logger.info(`Comparing signatures`, {
-                        employerAddress: this.jobPostDesc.employerWalletAddress,
-                        recoveredAddress,
-                        result: this.jobPostDesc.employerWalletAddress === recoveredAddress
-                    });
-                    const skipSignatureCheck = true; // TODO: add to options or fix it
-                    if (skipSignatureCheck) {
-                        return true;
-                    } else {
-                        return this.jobPostDesc.employerWalletAddress === recoveredAddress;
-                    }
+                    return this.jobPostDesc.employerWalletAddress === recoveredAddress;
                 }
             );
             listeners();

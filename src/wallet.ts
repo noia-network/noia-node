@@ -119,7 +119,7 @@ export class Wallet extends EventEmitter {
             try {
                 if (await this.isNodeRegistered(nodeAddress)) {
                     const nodeClient = await noiaGovernance.getNodeClient(nodeAddress);
-                    const ownerAddress = nodeClient.getOwnerAddress();
+                    const ownerAddress = await nodeClient.getOwnerAddress();
                     if (this.address === ownerAddress) {
                         this.nodeRegistrationPassed = true;
                         return true;
@@ -209,7 +209,7 @@ export class Wallet extends EventEmitter {
             if (hasLockedTokens) {
                 const businessClientAddress = await jobPost.getEmployerAddress();
                 const businessClient = await noiaGovernance.getBusinessClient(businessClientAddress);
-                const employerWalletAddress = businessClient.getOwnerAddress();
+                const employerWalletAddress = await businessClient.getOwnerAddress();
                 return {
                     employerWalletAddress: employerWalletAddress,
                     jobPostAddress: workOrder.getJobPost().address,
@@ -319,7 +319,7 @@ export class Wallet extends EventEmitter {
                         const jobPost = await noiaGovernance.getJobPost(jobPostAddress);
                         const businessClientAddress = await jobPost.getEmployerAddress();
                         const businessClient = await noiaGovernance.getBusinessClient(businessClientAddress);
-                        const employerWalletAddress = businessClient.getOwnerAddress();
+                        const employerWalletAddress = await businessClient.getOwnerAddress();
                         const data = {
                             address: jobPost.address,
                             employerWalletAddress: employerWalletAddress,

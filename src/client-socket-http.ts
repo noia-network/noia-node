@@ -164,7 +164,7 @@ export class ClientSocketHttp extends (EventEmitter as { new (): ClientSocketEmi
                 };
                 this.emit("listening", listeningInfo);
                 resolve();
-                logger.info("Listening for HTTP requests on port 7676", listeningInfo);
+                logger.info("Listening for HTTP requests on port 7676:", listeningInfo);
             });
         });
     }

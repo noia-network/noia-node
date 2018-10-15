@@ -1,3 +1,22 @@
+export enum WebSocketCloseEvent {
+    /**
+     * Normal closure; the connection successfully completed whatever purpose for which it was created.
+     */
+    NormalClosure = 1000,
+    /**
+     * Used to indicate that a connection was closed abnormally (that is, with no close frame being sent) when a status code is expected.
+     */
+    AbnormalClosure = 1006,
+    /**
+     * The endpoint is terminating the connection because it received a message that violates its policy.
+     */
+    PolicyViolation = 1008,
+    /**
+     * The server is terminating the connection because it is restarting.
+     */
+    ServiceRestarting = 1012
+}
+
 export interface EnvConfig {
     /**
      * Flag to save log to file.

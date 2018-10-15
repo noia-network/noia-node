@@ -171,9 +171,9 @@ export class ClientSocketWs extends (EventEmitter as { new (): ClientSocketEmitt
                     ssl: this.ssl
                 });
                 logger.info(
-                    `Listening for clients connections type=${this.ssl === true ? "wss" : "ws"} ip=${addressInfo.address} port=${
+                    `Listening for type=${this.ssl === true ? "wss" : "ws"} clients connections: ip=${addressInfo.address} port=${
                         addressInfo.port
-                    } family=${addressInfo.family}`
+                    } family=${addressInfo.family}.`
                 );
                 resolve();
             });

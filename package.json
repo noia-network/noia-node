@@ -38,9 +38,9 @@
         "typescript": "^3.0.0"
     },
     "dependencies": {
-        "@noia-network/governance": "^0.1.0",
+        "@noia-network/governance": "^0.1.1",
         "@noia-network/node-contents-client": "^1.0.0-rc.2",
-        "@noia-network/protocol": "^1.0.1-rc.2",
+        "@noia-network/protocol": "^1.0.1-rc.4",
         "@noia-network/webrtc-direct-server": "^1.0.1-rc.2",
         "@types/dotenv": "^4.0.3",
         "@types/express": "^4.16.0",

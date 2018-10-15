@@ -135,9 +135,9 @@ export class ClientSocketWrtc extends (EventEmitter as { new (): ClientSocketEmi
             type: this.type
         });
         logger.info(
-            `Listening for clients connections type=${this.type} control-port=${this.controlPort} control-ip=${this.controlIp} data-port=${
+            `Listening for type=${this.type} clients connections: control-port=${this.controlPort} control-ip=${this.controlIp} data-port=${
                 this.dataPort
-            }`
+            }.`
         );
     }
 

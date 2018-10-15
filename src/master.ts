@@ -21,6 +21,7 @@ import { logger } from "./logger";
 import { ProtocolEvent, Handshake, ClosedData, Clear, Seed, Response, NodeMetadata } from "@noia-network/protocol";
 import { ContentTransferer, ContentTransfererEvents } from "@noia-network/node-contents-client";
 import { JobPostDescription } from "./wallet";
+import { WebSocketCloseEvent } from "./contracts";
 
 const config = Helpers.getConfig();
 
@@ -201,11 +202,14 @@ export class Master extends MasterEmitter implements ContentTransferer {
         }
     }
 
-    private _onClosed(info?: ClosedData): void {
+    private _onClosed(info: ClosedData): void {
         this.connected = false;
         this.connecting = false;
         logger.info("Connection with master closed", info);
-        if (info != null && info.code != null && info.code !== 1000) {
+        if (
+            info.wasClean === false ||
+            (info.code !== WebSocketCloseEvent.NormalClosure && info.code !== WebSocketCloseEvent.ServiceRestarting)
+        ) {
             this.emit("error", new Error(info.code.toString()));
         } else {
             this.emit("closed", info);
@@ -216,12 +220,19 @@ export class Master extends MasterEmitter implements ContentTransferer {
         this.getWire().requested(missingPiece, infoHash);
     }
 
-    public disconnect(): void {
+    public disconnect(doRestart = false): void {
         this.canReconnect = false;
+        if (this.wire == null) {
+            return;
+        }
         if (!this.getWire().isReady()) {
             return;
         }
-        this.getWire().close(1000, "Normal disconnect.");
+        if (doRestart) {
+            this.getWire().close(1012, "The server is terminating the connection because it is restarting.");
+        } else {
+            this.getWire().close(1000, "Normal closure.");
+        }
     }
 
     public async close(): Promise<void> {
@@ -233,12 +244,20 @@ export class Master extends MasterEmitter implements ContentTransferer {
         return new Promise<void>((resolve, reject) => {
             if (this.connected) {
                 this.getWire().close(1000, "Normal disconnect.");
-                this._onClosed();
+                this._onClosed({
+                    code: 100,
+                    wasClean: true,
+                    reason: "Normal disconnect."
+                });
                 resolve();
             } else if (this.connecting) {
                 this.on("connected", () => {
                     this.getWire().close(1000, "Normal disconnect.");
-                    this._onClosed();
+                    this._onClosed({
+                        code: 100,
+                        wasClean: true,
+                        reason: "Normal disconnect."
+                    });
                     resolve();
                 });
             } else {
@@ -264,6 +283,10 @@ export class Master extends MasterEmitter implements ContentTransferer {
     }
 
     public bandwidth(params: BandwidthData): void {
+        if (this.wire == null) {
+            // Ignore since we have set interval inside node.ts.
+            return;
+        }
         if (this.getWire().isReady()) {
             logger.info(`Notifying master on changed bandwidth:`, params);
             this.getWire().bandwidthData(params);
@@ -272,7 +295,7 @@ export class Master extends MasterEmitter implements ContentTransferer {
 
     public seeding(infoHashes: string[]): void {
         if (this.getWire().isReady()) {
-            logger.info(`Notifying master that delivering ${infoHashes.length} content(s)=${infoHashes}`);
+            logger.info(`Notifying master that delivering ${infoHashes.length} content(s)=${infoHashes}.`);
             this.getWire().seeding(infoHashes);
         }
     }
@@ -289,11 +312,11 @@ export class Master extends MasterEmitter implements ContentTransferer {
     private registerEvents(): void {
         try {
             this.getWire().on("signedRequest", info => {
-                logger.info(`signed-request received:`, info.data);
+                logger.info(`Master sent signed-request:`, info.data);
                 this.emit("signedRequest", info);
             });
             this.getWire().on("workOrder", info => {
-                logger.info(`work-order-address=${info.data.address} received`);
+                logger.info(`Master sent work-order-address=${info.data.address}.`);
                 this.emit("workOrder", info);
             });
             this.getWire().on("clear", info => {
@@ -337,8 +360,12 @@ export class Master extends MasterEmitter implements ContentTransferer {
 
     public getWire(): Wire<NodeBlockchainMetadata, MasterBlockchainMetadata> | Wire<NodeMetadata, MasterMetadata> {
         if (this.wire == null) {
-            throw new Error("wire is invalid");
+            throw new Error("Wire is invalid.");
         }
         return this.wire;
+    }
+
+    public error(error: Error): void {
+        this.emit("error", error);
     }
 }

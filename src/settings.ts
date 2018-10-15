@@ -181,7 +181,7 @@ export class Settings extends EventEmitter {
             this.update(SettingsEnum.sslCrtBundlePath, path.resolve(sslCrtBundlePath));
         }
 
-        logger.info(`NOIA node: node-id=${this.options[SettingsEnum.nodeId]}.`);
+        logger.info(`NOIA node has node-id=${this.options[SettingsEnum.nodeId]}.`);
 
         this.ready = true;
     }
@@ -196,7 +196,6 @@ export class Settings extends EventEmitter {
                 settings[key] = defaultValue();
                 this._write(settings);
             } else {
-                // FIXME
                 settings[key] = defaultValue;
                 this._write(settings);
             }

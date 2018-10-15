@@ -10,6 +10,11 @@ import { ProtocolEvent, SignedRequest } from "@noia-network/protocol";
 import { SettingsEnum } from "./settings";
 import { logger } from "./logger";
 
+interface BlockPosition {
+    number?: number;
+    index?: number;
+}
+
 export interface JobPostDescription {
     employerWalletAddress: string;
     jobPostAddress: string;
@@ -23,11 +28,11 @@ export interface JobPostDescription {
 export class Wallet extends EventEmitter {
     private ready: boolean = false;
     private node: Node;
-    public address: string | undefined;
     public nodeAddress: string | undefined;
     public nodeRegistrationPassed: boolean;
     public noiaBalance: number | undefined;
     private nextJob: any;
+    private workTimeoutId?: NodeJS.Timer;
 
     constructor(node: Node, mnemonic: string, providerUrl: string) {
         super();
@@ -62,9 +67,9 @@ export class Wallet extends EventEmitter {
 
         noiaGovernance
             .init(initConfig)
-            .then(() => {
-                this.address = noiaGovernance.getOwnerAddress();
-                this.node.settings.update(SettingsEnum.walletAddress, this.address);
+            .then(async () => {
+                this.node.settings.update(SettingsEnum.walletAddress, this.getOwnerAddress());
+                await this.checkWorkOrder();
                 this.ready = true;
                 this.emit("ready");
             })
@@ -73,8 +78,12 @@ export class Wallet extends EventEmitter {
             });
     }
 
+    public getOwnerAddress(): string {
+        return noiaGovernance.getOwnerAddress();
+    }
+
     private async _ready(): Promise<void> {
-        return new Promise<void>(resolve => {
+        return new Promise<void>(async resolve => {
             if (this.ready) {
                 resolve();
             } else {
@@ -85,25 +94,33 @@ export class Wallet extends EventEmitter {
         });
     }
 
+    public cleanup(): void {
+        if (this.workTimeoutId != null) {
+            clearTimeout(this.workTimeoutId);
+            this.workTimeoutId = undefined;
+        }
+        // Drop work order we were working on so it wont be attempted when finding new job.
+        this.node.settings.remove(SettingsEnum.workOrder);
+    }
+
     public async getWorkOrder(workOrderAddress: string): Promise<WorkOrder> {
         await this._ready();
         const baseClient = await noiaGovernance.getBaseClient();
         const workOrder = await baseClient.getWorkOrderAt(workOrderAddress);
-        logger.info(`Retrieved work order at ${workOrderAddress}.`);
         return workOrder;
     }
 
     public async getBalance(): Promise<number> {
         await this._ready();
-        const balance = await noiaGovernance.getNoiaBalance(this.address as string);
-        logger.info(`wallet=${this.address}, balance(NOIA)=${balance}`);
+        const balance = await noiaGovernance.getNoiaBalance(this.getOwnerAddress());
+        logger.info(`Current balance(NOIA)=${balance} of wallet=${this.getOwnerAddress()}.`);
         return balance;
     }
 
     public async getEthBalance(): Promise<number> {
         await this._ready();
-        const balance = noiaGovernance.getEtherBalance(this.address as string);
-        logger.info(`wallet=${this.address}, balance(ETH)=${balance}`);
+        const balance = noiaGovernance.getEtherBalance(this.getOwnerAddress());
+        logger.info(`Current balance(ETH)=${balance} of wallet=${this.getOwnerAddress()}.`);
         return balance;
     }
 
@@ -114,22 +131,25 @@ export class Wallet extends EventEmitter {
             logger.info(`Skipping node lazy registration!`);
             return true;
         }
-        if (nodeAddress) {
-            logger.info(`Lazy wallet-address=${this.address} node-address=${nodeAddress} checking...`);
+
+        // If node address is set then check if it is valid (remove if not valid).
+        // If node address is not set create new node client or skip creation.
+        if (nodeAddress != null && nodeAddress !== "") {
+            logger.info(`Lazy wallet-address=${this.getOwnerAddress()} node-address=${nodeAddress} checking...`);
             try {
                 if (await this.isNodeRegistered(nodeAddress)) {
                     const nodeClient = await noiaGovernance.getNodeClient(nodeAddress);
-                    const ownerAddress = nodeClient.getOwnerAddress();
-                    if (this.address === ownerAddress) {
+                    const ownerAddress = await nodeClient.getOwnerAddress();
+                    if (this.getOwnerAddress() === ownerAddress) {
                         this.nodeRegistrationPassed = true;
                         return true;
                     } else {
-                        logger.warn(`node-address=${nodeAddress} belongs to other walllet, removing...`);
+                        logger.warn(`Node node-address=${nodeAddress} belongs to other walllet, removing...`);
                         this.node.settings.remove(SettingsEnum.client);
                         return false;
                     }
                 } else {
-                    logger.warn(`node-address=${nodeAddress} does not exist on blockchain`);
+                    logger.warn(`Node node-address=${nodeAddress} does not exist on blockchain.`);
                     return false;
                 }
             } catch (err) {
@@ -138,7 +158,7 @@ export class Wallet extends EventEmitter {
             }
         } else {
             if (doCreateClient) {
-                logger.info(`Lazy node client for wallet-address=${this.address} registration...`);
+                logger.info(`Node (wallet-address=${this.getOwnerAddress()}) is creating node client...`);
                 try {
                     await this.createNodeClientAddress();
                     this.nodeRegistrationPassed = true;
@@ -148,7 +168,7 @@ export class Wallet extends EventEmitter {
                     return false;
                 }
             } else {
-                logger.info(`Lazy node client for wallet-address=${this.address} registration skipped...`);
+                logger.info(`Node (wallet-address=${this.getOwnerAddress()}) is not using node client.`);
                 return true;
             }
         }
@@ -170,14 +190,7 @@ export class Wallet extends EventEmitter {
         logger.info("Creating node client...");
         try {
             await this._ready();
-            const nodeClientData: any = {};
-            // const ip = await Helpers.getIpPromise();
-            // NodeBlockchainMetadata ?
-            // nodeClientData["interface"] = this.node.settings.options[SettingsEnum.isHeadless] ? "terminal" : "gui";
-            // nodeClientData["node_ip"] = ip;
-            // nodeClientData["node_ws_port"] = this.node.settings.options[SettingsEnum.wsPort];
-            // nodeClientData["node_domain"] = this.node.settings.options[SettingsEnum.domain];
-            const nodeClient = await noiaGovernance.createNodeClient(nodeClientData);
+            const nodeClient = await noiaGovernance.createNodeClient({});
             this.node.settings.update(SettingsEnum.client, nodeClient.address);
             return nodeClient.address;
         } catch (err) {
@@ -187,29 +200,67 @@ export class Wallet extends EventEmitter {
     }
 
     private async earnTestEth(): Promise<void> {
-        logger.info(`Mining token (ETH_TEST) for address=${this.address}`);
+        logger.info(`Mining token (ETH_TEST) for address=${this.getOwnerAddress()}`);
         try {
             await this._ready();
-            request(`http://faucet.ropsten.be:3001/donate/${this.address}`);
+            request(`http://faucet.ropsten.be:3001/donate/${this.getOwnerAddress()}`);
         } catch (err) {
             logger.error("Earning test ETH failed:", err);
         }
     }
 
+    /**
+     * Check if work order is retrievable from work address. If it is not - delete saved work order address from settings.
+     */
+    private async checkWorkOrder(): Promise<void> {
+        const workOrderAddress = this.node.settings.options[SettingsEnum.workOrder];
+
+        // Check only if it is defined and potentially valid one.
+        if (workOrderAddress == null || workOrderAddress === "") {
+            return;
+        }
+
+        try {
+            const baseClient = await noiaGovernance.getBaseClient();
+            await baseClient.getWorkOrderAt(workOrderAddress);
+        } catch (err) {
+            logger.warn(`Work-order-address=${workOrderAddress} seemed to be invalid... removing.`);
+            this.node.settings.remove(SettingsEnum.workOrder);
+        }
+    }
+
+    private getBlockStartPosition(latestBlock: number): BlockPosition {
+        if (this.node.settings.options[SettingsEnum.lastBlockPosition] == null) {
+            return {};
+        }
+        const lastBlockPosition = this.node.settings.options[SettingsEnum.lastBlockPosition].split(":");
+        const blockPosition = {
+            number: parseInt(lastBlockPosition[0]),
+            index: parseInt(lastBlockPosition[1])
+        };
+        if (blockPosition.number > latestBlock) {
+            this.node.settings.remove(SettingsEnum.lastBlockPosition);
+            return {};
+        }
+        return blockPosition;
+    }
+
     public async findNextJob(): Promise<JobPostDescription> {
         await this._ready();
         const workOrderAddress = this.node.settings.options[SettingsEnum.workOrder];
-        logger.info(`Searching for next job post.. work-order-address=${workOrderAddress}.`);
-        if (workOrderAddress != null && workOrderAddress !== "not-set") {
+
+        let attemptedSavedWorkOrder = false;
+        if (workOrderAddress != null && workOrderAddress !== "") {
+            attemptedSavedWorkOrder = true;
             const baseClient = await noiaGovernance.getBaseClient();
             const workOrder = await baseClient.getWorkOrderAt(workOrderAddress);
             const hasLockedTokens = await workOrder.hasTimelockedTokens();
             const jobPost = workOrder.getJobPost();
-            logger.info(`Work order exists, has-locked-tokens: ${hasLockedTokens}`);
             if (hasLockedTokens) {
+                logger.info(`Using saved work-order-address=${workOrderAddress} with locked tokens.`);
                 const businessClientAddress = await jobPost.getEmployerAddress();
                 const businessClient = await noiaGovernance.getBusinessClient(businessClientAddress);
-                const employerWalletAddress = businessClient.getOwnerAddress();
+                const employerWalletAddress = await businessClient.getOwnerAddress();
                 return {
                     employerWalletAddress: employerWalletAddress,
                     jobPostAddress: workOrder.getJobPost().address,
@@ -218,15 +269,9 @@ export class Wallet extends EventEmitter {
             }
         }
 
-        // get a fresh new base client to pull in the next jobs
-        let lastBlockNumber: number | undefined;
-        let lastBlockIndex: number | undefined;
-        if (this.node.settings.options[SettingsEnum.lastBlockPosition] != null) {
-            const lastBlockPosition = this.node.settings.options[SettingsEnum.lastBlockPosition].split(":");
-            lastBlockNumber = parseInt(lastBlockPosition[0]);
-            lastBlockIndex = parseInt(lastBlockPosition[1]);
-        }
-        logger.info(`Last block position: last-block-number=${lastBlockNumber}, last-block-index: ${lastBlockIndex}.`);
+        logger.info(`Scanning blockchain for new job post (attempted-saved-work-order=${attemptedSavedWorkOrder})... `);
+        // Get a fresh new base client to pull in the next jobs.
+        let blockStartPosition: BlockPosition = {};
         if (this.nextJob == null) {
             this.nextJob = {
                 watcher: await noiaGovernance.getBaseClient()
@@ -235,13 +280,15 @@ export class Wallet extends EventEmitter {
 
             // Calculate the fromBlock based on current block.
             const latestBlock = await util.promisify(nextJobWatcher.web3.eth.getBlockNumber)();
-            let fromBlock = latestBlock - 1000;
-            if (fromBlock < 0) {
-                fromBlock = 0;
-            }
+            blockStartPosition = this.getBlockStartPosition(latestBlock);
+            logger.info(
+                `Starting block position: last-block-number=${blockStartPosition.number}, last-block-index=${blockStartPosition.index}.`
+            );
 
-            if (lastBlockNumber != null) {
-                fromBlock = lastBlockNumber;
+            let fromBlock = latestBlock - 1000 < 0 ? 0 : latestBlock - 1000;
+            const blockStartPositionNumber = blockStartPosition.number;
+            if (blockStartPositionNumber != null) {
+                fromBlock = blockStartPositionNumber;
             }
 
             // start polling
@@ -286,18 +333,20 @@ export class Wallet extends EventEmitter {
             };
 
             // Start the timer.
-            const timeout = 5 * 60 * 1000; // 5 mins
+            const timeout = 2 * 60 * 1000; // 30 mins
             timeoutId = setTimeout(() => {
                 exit(null, new Error(`Got timeout (${timeout / 1000}s) on finding the next job!`));
             }, timeout);
 
             // Start watching the new job post.
-            logger.info(`Starting to listen next job post!`);
+            logger.info(`Registering new job post event.`);
             watcher.on(
                 "job_post_added",
                 async (jobPostAddress: string, blockNumber: number, index: number, complete: (cont?: boolean) => void) => {
-                    // if we have saved last block number and last log index inside that block number
+                    // If we have saved last block number and last log index inside that block number
                     // then we need to skip old incoming blocks
+                    const lastBlockNumber = blockStartPosition.number;
+                    const lastBlockIndex = blockStartPosition.index;
                     if (lastBlockNumber != null && lastBlockIndex != null) {
                         if (blockNumber < lastBlockNumber) {
                             logger.debug(
@@ -319,7 +368,7 @@ export class Wallet extends EventEmitter {
                         const jobPost = await noiaGovernance.getJobPost(jobPostAddress);
                         const businessClientAddress = await jobPost.getEmployerAddress();
                         const businessClient = await noiaGovernance.getBusinessClient(businessClientAddress);
-                        const employerWalletAddress = businessClient.getOwnerAddress();
+                        const employerWalletAddress = await businessClient.getOwnerAddress();
                         const data = {
                             address: jobPost.address,
                             employerWalletAddress: employerWalletAddress,
@@ -365,7 +414,6 @@ export class Wallet extends EventEmitter {
 
     public async doWork(workOrder: WorkOrder): Promise<void> {
         const timeLock = await workOrder.getTimelockedEarliest();
-        logger.info(`Node is doing work: time-lock-amount=${timeLock.amount}, time-locket-until:${timeLock.until}.`);
         if (timeLock == null) {
             logger.error("No initial earliest time lock, disconnecting from master.");
             this.node.master.close();
@@ -374,20 +422,20 @@ export class Wallet extends EventEmitter {
         const currentTimeSeconds = new Date().getTime() / 1000;
         let timeDiff = timeLock.until - currentTimeSeconds;
         timeDiff = timeDiff < 0 ? 0 : timeDiff;
-        if (this.address == null) {
-            throw new Error("Wallet address is invalid.");
-        }
         const nonce = Date.now();
-        const signedReleaseRequest = await workOrder.generateSignedReleaseRequest(this.address, nonce);
+        const signedReleaseRequest = await workOrder.generateSignedReleaseRequest(this.getOwnerAddress(), nonce);
         const SAFETY_MARGIN_SECONDS = 5;
         this.noiaBalance = await this.getBalance();
-        setTimeout(async () => {
+        logger.info(
+            `Node is doing work: time-lock-amount=${timeLock.amount}, time-locked-until:${timeLock.until}, releasing in ${timeDiff +
+                SAFETY_MARGIN_SECONDS} second(s).`
+        );
+        this.workTimeoutId = setTimeout(async () => {
             this.node.master.signedRequest({
                 type: "release",
-                beneficiary: this.address,
+                beneficiary: this.getOwnerAddress(),
                 signedRequest: signedReleaseRequest,
                 workOrderAddress: workOrder.address,
-                // @ts-ignore
                 extendWorkOrder: true
             });
         }, (timeDiff + SAFETY_MARGIN_SECONDS) * 1000);
@@ -397,7 +445,11 @@ export class Wallet extends EventEmitter {
         const workOrder = await this.getWorkOrder(info.data.address);
         const totalFunds = await workOrder.totalFunds();
         const totalVested = await workOrder.totalVested();
-        logger.info(`Received work-order total-funds=${totalFunds.toNumber()} total-vested=${totalVested.toNumber()}`);
+        logger.info(
+            `Received work order (work-order-address=${
+                info.data.address
+            }) total-funds=${totalFunds.toNumber()} total-vested=${totalVested.toNumber()}.`
+        );
         if (totalFunds.toNumber() === 0) {
             logger.warn("Master doesn't have funds, disconnecting!");
             this.node.master.close();
@@ -424,10 +476,13 @@ export class Wallet extends EventEmitter {
         if (receivedSignedRequest.data.type === "accepted") {
             try {
                 if (receivedSignedRequest.data.workOrderAddress !== workOrder.address) {
-                    logger.error("Work order are not the same");
+                    logger.error(
+                        `Compared work orders are not the same: received=${receivedSignedRequest.data.workOrderAddress} and saved=${
+                            workOrder.address
+                        }.`
+                    );
                     return;
                 }
-                logger.info("Work orders are the same.");
                 if (!(await workOrder.isAccepted())) {
                     logger.error("Master did not actually accept work order");
                     return;
@@ -437,7 +492,9 @@ export class Wallet extends EventEmitter {
                 logger.error("Something went wrong", err);
             }
         } else if (receivedSignedRequest.data.type === "released") {
-            logger.info("Signed request releases.");
+            if (receivedSignedRequest.data.error != null) {
+                throw new Error(receivedSignedRequest.data.error);
+            }
             const currentBalance = await this.getBalance();
             if (this.noiaBalance == null) {
                 throw new Error("cant happen");
@@ -451,13 +508,17 @@ export class Wallet extends EventEmitter {
             logger.info(`NODE earned ${balanceDiff}, current-balance=${currentBalance}`);
             try {
                 if (receivedSignedRequest.data.workOrderAddress !== workOrder.address) {
-                    logger.error("Work order are not the same");
+                    logger.error(
+                        `Compared work orders are not the same: received=${receivedSignedRequest.data.workOrderAddress} and saved=${
+                            workOrder.address
+                        }.`
+                    );
                     return;
                 }
                 const timeLock = await workOrder.getTimelockedEarliest();
                 logger.info("Time lock", timeLock);
                 if (timeLock == null) {
-                    this.node.settings.update(SettingsEnum.workOrder, "not-set");
+                    this.node.settings.remove(SettingsEnum.workOrder);
                     logger.error("No more time locks, disconnecting from master and searching for new jobs...");
                     this.node.stop();
                     this.node.master.removeAllListeners("signedRequest");

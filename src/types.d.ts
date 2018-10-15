@@ -143,13 +143,13 @@ declare module "@noia-network/governance" {
     }
     export class NodeClient {
         address: string;
-        getOwnerAddress(): string;
+        getOwnerAddress(): Promise<string>;
     }
     export class BusinessClient {
         address: string;
         info: BusinessClientData;
         createJobPost(jobPostOptions: JobPostOptions): Promise<JobPost>;
-        getOwnerAddress(): string;
+        getOwnerAddress(): Promise<string>;
     }
     class JobPost {
         address: string;

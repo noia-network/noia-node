@@ -11,6 +11,7 @@ import { SettingsOptions, Settings, SettingsEnum } from "./settings";
 import { Statistics, StatisticsEnum } from "./statistics";
 import { StorageSpace } from "./storage-space";
 import { Wallet } from "./wallet";
+import { WebSocketCloseEvent } from "./contracts";
 
 interface NodeEvents {
     started: (this: Node) => this;
@@ -34,6 +35,7 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
     public statistics: Statistics;
     public storageSpace: StorageSpace;
     public wallet: Wallet;
+    private isRestarting: boolean = false;
 
     constructor(public readonly opts: NodeOptions) {
         super();
@@ -74,27 +76,39 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
             contentsClientSeedingListener(this.contentsClient.getInfoHashes());
             this.contentsClient.addListener("seeding", contentsClientSeedingListener);
             this.master.addListener("workOrder", this.wallet.onWorkOrder.bind(this.wallet));
-            this.master.addListener("signedRequest", this.wallet.onReceivedSignedRequest.bind(this.wallet));
+            this.master.addListener("signedRequest", async signedRequest => {
+                try {
+                    await this.wallet.onReceivedSignedRequest(signedRequest);
+                } catch (err) {
+                    logger.error(`Received signed request contains an error='${err.message}'.`);
+                    this.settings.remove(SettingsEnum.workOrder);
+                    this.master.error(err);
+                }
+            });
         });
 
-        this.master.on("error", err => {
+        /**
+         * Remove some registered listeners and restart or stop node.
+         */
+        this.master.on("error", async err => {
             this.master.removeAllListeners("workOrder");
             this.master.removeAllListeners("signedRequest");
             this.contentsClient.removeListener("seeding", contentsClientSeedingListener);
             if (!this.settings.options[SettingsEnum.skipBlockchain]) {
-                setTimeout(() => {
-                    this.restart();
-                }, 5000);
+                this.wallet.cleanup();
+                await this.restart(15);
             } else {
                 this.stop();
+                this.emit("error", err);
             }
-            this.emit("error", err);
         });
-        this.master.on("closed", _ => {
+        this.master.on("closed", closeEvent => {
             this.master.removeAllListeners("workOrder");
             this.master.removeAllListeners("signedRequest");
             this.contentsClient.removeListener("seeding", contentsClientSeedingListener);
-            this.stop();
+            if (closeEvent != null && closeEvent.code !== WebSocketCloseEvent.ServiceRestarting) {
+                this.stop();
+            }
         });
         this.clientSockets.on("error", (err: Error) => {
             this.stop();
@@ -166,13 +180,13 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
                     );
                 } catch (err) {
                     this.logger.error("Could not find job and connect to master:", err);
-                    throw new Error(err.message);
+                    // Restart and attempt again!
+                    this.wallet.cleanup();
+                    await this.restart(15);
                 }
             } else {
                 this.logger.info("Node failed to register. Will try again.");
-                setTimeout(() => {
-                    this.restart();
-                }, 15000);
+                await this.restart(15);
             }
         }
 
@@ -181,18 +195,24 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
         });
     }
 
-    public async stop(): Promise<void> {
-        this.master.disconnect();
+    public async stop(doRestart = false): Promise<void> {
+        this.master.disconnect(doRestart);
         await this.clientSockets.close();
         this.contentsClient.stop();
-
         this.emit("stopped");
     }
 
-    public async restart(): Promise<void> {
-        this.logger.warn("Restarting node...");
-        await this.stop();
-        await this.start();
+    public async restart(timeoutSec: number): Promise<void> {
+        if (this.isRestarting) {
+            return;
+        }
+        this.isRestarting = true;
+        this.logger.warn(`Restarting node in ${timeoutSec} seconds...`);
+        setTimeout(async () => {
+            await this.stop(true);
+            this.isRestarting = false;
+            await this.start();
+        }, timeoutSec * 1000);
     }
 
     public async destroy(): Promise<void> {

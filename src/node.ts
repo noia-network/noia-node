@@ -1,88 +1,111 @@
+import * as path from "path";
 import EventEmitter from "events";
 import StrictEventEmitter from "strict-event-emitter-types";
 import { ContentsClient } from "@noia-network/node-contents-client";
+import { DeepPartial } from "@noia-network/node-settings/dist/contracts/types-helpers";
+import { NodeSettings, NodeSettingsDto } from "@noia-network/node-settings";
 
-import { ClientSockets, ClientSocketsOptions } from "./client-sockets";
+import { ClientSockets } from "./client-sockets";
 import { Helpers } from "./helpers";
 import { Logger, logger } from "./logger";
 import { Master } from "./master";
 import { NodeController } from "./node-controller";
-import { SettingsOptions, Settings, SettingsEnum } from "./settings";
 import { Statistics, StatisticsEnum } from "./statistics";
 import { StorageSpace } from "./storage-space";
 import { Wallet } from "./wallet";
 import { WebSocketCloseEvent } from "./contracts";
 
+export type NodeInterface = "cli" | "gui" | "unspecified";
+
 interface NodeEvents {
     started: (this: Node) => this;
     stopped: (this: Node) => this;
     destroyed: (this: Node) => this;
+    warning: (this: Node, msg: string) => this;
     error: (this: Node, error: Error) => this;
 }
-
 type NodeEmitter = StrictEventEmitter<EventEmitter, NodeEvents>;
-
-export type NodeOptions = Partial<SettingsOptions>;
-
 export class Node extends (EventEmitter as { new (): NodeEmitter }) {
-    public readonly VERSION: string = "0.1.0";
-    public clientSockets: ClientSockets;
-    public contentsClient: ContentsClient;
-    public logger: Logger = logger;
-    public master: Master;
-    public nodeController: undefined | NodeController;
-    public settings: Settings;
-    public statistics: Statistics;
-    public storageSpace: StorageSpace;
-    public wallet: Wallet;
+    private clientSockets?: ClientSockets;
+    private contentsClient?: ContentsClient;
     private isRestarting: boolean = false;
+    private master?: Master;
+    private settings?: NodeSettings;
+    private statistics?: Statistics;
+    private storageSpace?: StorageSpace;
+    private wallet?: Wallet;
+    public logger: Logger = logger;
+    public nodeController: undefined | NodeController;
+    public readonly VERSION: string = "0.1.0";
 
-    constructor(public readonly opts: NodeOptions) {
+    constructor(
+        public readonly opts: {
+            interface: NodeInterface;
+            settingsPath?: string;
+        } = { interface: "unspecified" }
+    ) {
         super();
-        this.settings = new Settings(opts);
-        this.statistics = new Statistics(this.settings.options[SettingsEnum.statisticsPath]);
+        this.opts.settingsPath = this.opts.settingsPath != null ? this.opts.settingsPath : NodeSettings.getDefaultSettingsPath();
+    }
 
+    public async init(): Promise<void> {
+        // TODO: When initialized with defaults, I don't know where settings were saved to, would be nice not to do this check.
+        logger.info(`Initializing NOIA node, settings-path=${this.opts.settingsPath}.`);
+        this.settings = await NodeSettings.init(this.opts.settingsPath);
+        this.settings.on("updated", updatedEvent => {
+            logger.info(
+                `Setting configuration updated: key=${updatedEvent.setting.key} prev-value=${updatedEvent.prevValue} value=${
+                    updatedEvent.value
+                }.`
+            );
+        });
+        this.statistics = new Statistics(this.settings.getDefaultSettings().statisticsPath as string);
         this.master = new Master(this);
-        this.clientSockets = new ClientSockets(this, this.getClientSocketsOptions());
-        this.storageSpace = new StorageSpace(
-            this.settings.options[SettingsEnum.storageDir],
-            this.settings.options[SettingsEnum.storageSize]
-        );
-        this.contentsClient = new ContentsClient(this.master, this.settings.options[SettingsEnum.storageDir]);
+        this.clientSockets = new ClientSockets(this);
+        const settingsStorageDir = this.getSettings()
+            .getScope("storage")
+            .get("dir");
+        const storageDir = settingsStorageDir != null ? settingsStorageDir : path.join(this.getSettings().get("userDataPath"), "storage");
+        this.storageSpace = new StorageSpace(storageDir, this.settings.getScope("storage").get("size"));
+        this.contentsClient = new ContentsClient(this.getMaster(), storageDir);
         this.wallet = new Wallet(
             this,
-            this.settings.options[SettingsEnum.walletMnemonic],
-            this.settings.options[SettingsEnum.walletProviderUrl]
+            this.settings.getScope("blockchain").get("walletMnemonic"),
+            this.settings.getScope("blockchain").get("walletProviderUrl")
         );
-        if (this.settings.options[SettingsEnum.controller]) {
+        if (this.settings.getScope("controller").get("isEnabled")) {
             this.nodeController = new NodeController(this);
         }
-        this.wallet.getBalance();
+        this.getWallet().getBalance();
         const contentsClientSeedingListener = (infoHashes: string[]) => {
-            this.master.seeding(infoHashes);
-            this.storageSpace.stats().then(info => {
-                this.master.storage(info);
-            });
+            this.getMaster().seeding(infoHashes);
+            this.getStorageSpace()
+                .stats()
+                .then(info => {
+                    this.getMaster().storage(info);
+                });
         };
 
         // Register bandwidth reporting in 5 minutes interval.
         setInterval(async () => {
             const bandwidthData = await Helpers.getSpeedTest();
-            this.master.bandwidth(bandwidthData);
+            this.getMaster().bandwidth(bandwidthData);
         }, 5 * 60 * 1000);
 
-        this.master.on("connected", async () => {
-            this.logger.info(`Connected to master, master-address=${this.master.address}.`);
-            contentsClientSeedingListener(this.contentsClient.getInfoHashes());
-            this.contentsClient.addListener("seeding", contentsClientSeedingListener);
-            this.master.addListener("workOrder", this.wallet.onWorkOrder.bind(this.wallet));
-            this.master.addListener("signedRequest", async signedRequest => {
+        this.getMaster().on("connected", async () => {
+            this.logger.info(`Connected to master, master-address=${this.getMaster().address}.`);
+            contentsClientSeedingListener(this.getContentsClient().getInfoHashes());
+            this.getContentsClient().addListener("seeding", contentsClientSeedingListener);
+            this.getMaster().addListener("workOrder", this.getWallet().onWorkOrder.bind(this.getWallet()));
+            this.getMaster().addListener("signedRequest", async signedRequest => {
                 try {
-                    await this.wallet.onReceivedSignedRequest(signedRequest);
+                    await this.getWallet().onReceivedSignedRequest(signedRequest);
                 } catch (err) {
                     logger.error(`Received signed request contains an error='${err.message}'.`);
-                    this.settings.remove(SettingsEnum.workOrder);
-                    this.master.error(err);
+                    this.getSettings()
+                        .getScope("blockchain")
+                        .reset("workOrderAddress");
+                    this.getMaster().error(err);
                 }
             });
         });
@@ -90,22 +113,26 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
         /**
          * Remove some registered listeners and restart or stop node.
          */
-        this.master.on("error", async err => {
-            this.master.removeAllListeners("workOrder");
-            this.master.removeAllListeners("signedRequest");
-            this.contentsClient.removeListener("seeding", contentsClientSeedingListener);
-            if (!this.settings.options[SettingsEnum.skipBlockchain]) {
-                this.wallet.cleanup();
+        this.getMaster().on("error", async err => {
+            this.getMaster().removeAllListeners("workOrder");
+            this.getMaster().removeAllListeners("signedRequest");
+            this.getContentsClient().removeListener("seeding", contentsClientSeedingListener);
+            if (
+                this.getSettings()
+                    .getScope("blockchain")
+                    .get("isEnabled")
+            ) {
+                this.getWallet().cleanup();
                 await this.restart(15);
             } else {
                 this.stop();
                 this.emit("error", err);
             }
         });
-        this.master.on("closed", closeEvent => {
-            this.master.removeAllListeners("workOrder");
-            this.master.removeAllListeners("signedRequest");
-            this.contentsClient.removeListener("seeding", contentsClientSeedingListener);
+        this.getMaster().on("closed", closeEvent => {
+            this.getMaster().removeAllListeners("workOrder");
+            this.getMaster().removeAllListeners("signedRequest");
+            this.getContentsClient().removeListener("seeding", contentsClientSeedingListener);
             if (closeEvent != null && closeEvent.code !== WebSocketCloseEvent.ServiceRestarting) {
                 this.stop();
             }
@@ -116,34 +143,90 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
         });
 
         // Update total uploaded and uploaded statistics.
-        this.contentsClient.on("downloaded", (chunkSize: number) => {
-            const totalDownloaded = this.statistics.statistics[StatisticsEnum.totalDownloaded];
-            this.statistics.update(StatisticsEnum.totalDownloaded, totalDownloaded + chunkSize);
+        this.getContentsClient().on("downloaded", (chunkSize: number) => {
+            const totalDownloaded = this.getStatistics().statistics[StatisticsEnum.totalDownloaded];
+            this.getStatistics().update(StatisticsEnum.totalDownloaded, totalDownloaded + chunkSize);
         });
-        this.contentsClient.on("uploaded", (chunkSize: number) => {
-            const totalUploaded = this.statistics.statistics[StatisticsEnum.totalUploaded];
-            this.statistics.update(StatisticsEnum.totalUploaded, totalUploaded + chunkSize);
+        this.getContentsClient().on("uploaded", (chunkSize: number) => {
+            const totalUploaded = this.getStatistics().statistics[StatisticsEnum.totalUploaded];
+            this.getStatistics().update(StatisticsEnum.totalUploaded, totalUploaded + chunkSize);
         });
+        logger.info("NOIA node initialized.");
     }
 
-    public setWallet(walletAddress: string): void {
-        this.settings.update(SettingsEnum.walletAddress, walletAddress);
+    public getContentsClient(): ContentsClient {
+        if (this.contentsClient == null) {
+            throw new Error("Node contents client is not initialized.");
+        }
+        return this.contentsClient;
+    }
+
+    public getSettings(): NodeSettings {
+        if (this.settings == null) {
+            throw new Error("Node settings are not initialized.");
+        }
+        return this.settings;
+    }
+
+    public getWallet(): Wallet {
+        if (this.wallet == null) {
+            throw new Error("Node wallet is not initialized.");
+        }
+        return this.wallet;
+    }
+
+    public getStatistics(): Statistics {
+        if (this.statistics == null) {
+            throw new Error("Node statistics is not initialized.");
+        }
+        return this.statistics;
+    }
+
+    public getStorageSpace(): StorageSpace {
+        if (this.storageSpace == null) {
+            throw new Error("Node storage space is not initialized.");
+        }
+        return this.storageSpace;
+    }
+
+    public getMaster(): Master {
+        if (this.master == null) {
+            throw new Error("Node master is not initialized.");
+        }
+        return this.master;
+    }
+
+    public getClientSockets(): ClientSockets {
+        if (this.clientSockets == null) {
+            throw new Error("Node client sockets is not initialized.");
+        }
+        return this.clientSockets;
+    }
+
+    public setAirdropAddress(airdropAddress: string): void {
+        this.getSettings()
+            .getScope("blockchain")
+            .update("airdropAddress", airdropAddress);
     }
 
     public async getBalance(): Promise<number> {
-        return this.wallet.getBalance();
+        return this.getWallet().getBalance();
     }
 
     public async getEthBalance(): Promise<number> {
-        return this.wallet.getEthBalance();
+        return this.getWallet().getEthBalance();
     }
 
     public setStorageSpace(dir: string, allocated: number): void {
         if (dir) {
-            this.settings.update(SettingsEnum.storageDir, dir);
+            this.getSettings()
+                .getScope("storage")
+                .update("dir", dir);
         }
         if (allocated) {
-            this.settings.update(SettingsEnum.storageSize, allocated);
+            this.getSettings()
+                .getScope("storage")
+                .update("size", allocated);
         }
     }
 
@@ -159,29 +242,41 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
             throw new Error(msg);
         }
 
-        this.contentsClient.start();
+        this.getContentsClient().start();
         await this.clientSockets.listen();
 
-        const skipBlockain = this.settings.options[SettingsEnum.skipBlockchain];
+        const skipBlockain = !this.getSettings()
+            .getScope("blockchain")
+            .get("isEnabled");
         if (skipBlockain) {
-            this.master.connect(this.settings.options[SettingsEnum.masterAddress]);
+            const masterAddress = this.getSettings().get("masterAddress");
+            logger.info(`Connecting to master (without blockchain), master-address=${masterAddress}.`);
+            this.getMaster().connect(masterAddress);
         } else {
-            if (await this.wallet.lazyNodeRegistration(this.settings.options[SettingsEnum.client])) {
+            if (
+                await this.getWallet().lazyNodeRegistration(
+                    this.getSettings()
+                        .getScope("blockchain")
+                        .get("clientAddress")
+                )
+            ) {
                 try {
-                    const jobData = await this.wallet.findNextJob();
-                    this.settings.update(SettingsEnum.lastBlockPosition, jobData.blockPosition);
+                    const jobData = await this.getWallet().findNextJob();
+                    this.getSettings()
+                        .getScope("blockchain")
+                        .update("lastBlockPosition", jobData.blockPosition);
                     if (jobData.info.host == null || jobData.info.port == null) {
                         logger.warn("Job post info is missing host or port.");
                     }
                     const address = `ws://${jobData.info.host}:${jobData.info.port}`;
-                    this.master.connect(
+                    this.getMaster().connect(
                         address,
                         jobData
                     );
                 } catch (err) {
                     this.logger.error("Could not find job and connect to master:", err);
                     // Restart and attempt again!
-                    this.wallet.cleanup();
+                    this.getWallet().cleanup();
                     await this.restart(15);
                 }
             } else {
@@ -196,9 +291,9 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
     }
 
     public async stop(doRestart = false): Promise<void> {
-        this.master.disconnect(doRestart);
-        await this.clientSockets.close();
-        this.contentsClient.stop();
+        this.getMaster().disconnect(doRestart);
+        await this.getClientSockets().close();
+        this.getContentsClient().stop();
         this.emit("stopped");
     }
 
@@ -216,41 +311,10 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
     }
 
     public async destroy(): Promise<void> {
-        await this.master.close();
-        await this.clientSockets.close();
-        this.contentsClient.destroy();
+        await this.getMaster().close();
+        await this.getClientSockets().close();
+        this.getContentsClient().destroy();
 
         this.emit("destroyed");
-    }
-
-    private getClientSocketsOptions(): ClientSocketsOptions {
-        const clientSocketsOpts: ClientSocketsOptions = {
-            natPmp: this.settings.options[SettingsEnum.natPmp],
-            http: this.settings.options[SettingsEnum.http]
-                ? {
-                      ip: this.settings.options[SettingsEnum.httpIp],
-                      port: this.settings.options[SettingsEnum.httpPort]
-                  }
-                : undefined,
-            ws: this.settings.options[SettingsEnum.ws]
-                ? {
-                      ip: this.settings.options[SettingsEnum.wsIp],
-                      port: this.settings.options[SettingsEnum.wsPort],
-                      ssl: this.settings.options[SettingsEnum.ssl],
-                      ssl_key: this.settings.options[SettingsEnum.sslPrivateKeyPath],
-                      ssl_cert: this.settings.options[SettingsEnum.sslCrtPath],
-                      ssl_ca: this.settings.options[SettingsEnum.sslCrtBundlePath]
-                  }
-                : undefined,
-            wrtc: this.settings.options[SettingsEnum.wrtc]
-                ? {
-                      controlPort: this.settings.options[SettingsEnum.wrtcControlPort],
-                      controlIp: this.settings.options[SettingsEnum.wrtcControlIp],
-                      dataPort: this.settings.options[SettingsEnum.wrtcDataPort],
-                      dataIp: this.settings.options[SettingsEnum.wrtcDataIp]
-                  }
-                : undefined
-        };
-        return clientSocketsOpts;
     }
 }

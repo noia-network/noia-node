@@ -2,46 +2,92 @@ import EventEmitter from "events";
 import StrictEventEmitter from "strict-event-emitter-types";
 
 import { ClientSocketEvents } from "./contracts";
-import { ClientSocketHttp, ClientSocketHttpOptions } from "./client-socket-http";
+import { ClientSocketHttp } from "./client-socket-http";
 import { ClientSocketWrtc } from "./client-socket-wrtc";
-import { ClientSocketWrtcOptions } from "./client-socket-wrtc";
-import { ClientSocketWs, ClientSocketWsOptions } from "./client-socket-ws";
+import { ClientSocketWs } from "./client-socket-ws";
 import { NatPmp, DEFAULT_TTL } from "./nat-pmp";
 import { Node } from "./node";
 import { logger } from "./logger";
 
 type ProtocolEmitter = StrictEventEmitter<EventEmitter, ClientSocketEvents>;
 
-export interface ClientSocketsOptions {
-    natPmp?: boolean;
-    http?: ClientSocketHttpOptions;
-    ws?: ClientSocketWsOptions;
-    wrtc?: ClientSocketWrtcOptions;
-}
-
 export class ClientSockets extends (EventEmitter as { new (): ProtocolEmitter }) {
     public http?: ClientSocketHttp;
     public ws?: ClientSocketWs;
     public wrtc?: ClientSocketWrtc;
 
-    constructor(private readonly node: Node, public opts: ClientSocketsOptions) {
+    constructor(private readonly node: Node) {
         super();
 
         // TODO: Implement unregistering, since now ports will be unmaped when default TTL will expire.
         // TODO: Check epoch and remap is something goes wrong. See https://tools.ietf.org/html/rfc6886#section-3.6.
-        if (opts.natPmp) {
+        if (this.node.getSettings().get("natPmp")) {
             const natPmp = new NatPmp();
             const registerPorts = (): void => {
                 const promises = [];
-                if (this.opts.wrtc != null) {
-                    promises.push(natPmp.register("tcp", this.opts.wrtc.controlPort));
-                    promises.push(natPmp.register("udp", this.opts.wrtc.dataPort));
+                if (
+                    this.node
+                        .getSettings()
+                        .getScope("sockets")
+                        .getScope("wrtc")
+                        .get("isEnabled")
+                ) {
+                    promises.push(
+                        natPmp.register(
+                            "tcp",
+                            this.node
+                                .getSettings()
+                                .getScope("sockets")
+                                .getScope("wrtc")
+                                .get("controlPort")
+                        )
+                    );
+                    promises.push(
+                        natPmp.register(
+                            "udp",
+                            this.node
+                                .getSettings()
+                                .getScope("sockets")
+                                .getScope("wrtc")
+                                .get("dataPort")
+                        )
+                    );
                 }
-                if (this.opts.ws) {
-                    promises.push(natPmp.register("tcp", this.opts.ws.port));
+                if (
+                    this.node
+                        .getSettings()
+                        .getScope("sockets")
+                        .getScope("ws")
+                        .get("isEnabled")
+                ) {
+                    promises.push(
+                        natPmp.register(
+                            "tcp",
+                            this.node
+                                .getSettings()
+                                .getScope("sockets")
+                                .getScope("ws")
+                                .get("port")
+                        )
+                    );
                 }
-                if (this.opts.http) {
-                    promises.push(natPmp.register("tcp", this.opts.http.port));
+                if (
+                    this.node
+                        .getSettings()
+                        .getScope("sockets")
+                        .getScope("http")
+                        .get("isEnabled")
+                ) {
+                    promises.push(
+                        natPmp.register(
+                            "tcp",
+                            this.node
+                                .getSettings()
+                                .getScope("sockets")
+                                .getScope("http")
+                                .get("port")
+                        )
+                    );
                 }
 
                 // TODO: Use await Promise.all.
@@ -65,8 +111,14 @@ export class ClientSockets extends (EventEmitter as { new (): ProtocolEmitter })
             registerPorts();
         }
 
-        if (this.opts.http) {
-            this.http = new ClientSocketHttp(this.node, this.opts.http.port, this.opts.http.ip);
+        if (
+            this.node
+                .getSettings()
+                .getScope("sockets")
+                .getScope("http")
+                .get("isEnabled")
+        ) {
+            this.http = new ClientSocketHttp(this.node);
             this.http.on("listening", info => {
                 this.emit("listening", info);
             });
@@ -77,8 +129,14 @@ export class ClientSockets extends (EventEmitter as { new (): ProtocolEmitter })
                 this.emit("resourceSent", info);
             });
         }
-        if (this.opts.ws) {
-            this.ws = new ClientSocketWs(this.node, this.opts.ws.port, this.opts.ws.ip, this.opts.ws);
+        if (
+            this.node
+                .getSettings()
+                .getScope("sockets")
+                .getScope("ws")
+                .get("isEnabled")
+        ) {
+            this.ws = new ClientSocketWs(this.node);
             this.ws.on("listening", info => {
                 this.emit("listening", info);
             });
@@ -89,14 +147,14 @@ export class ClientSockets extends (EventEmitter as { new (): ProtocolEmitter })
                 this.emit("resourceSent", info);
             });
         }
-        if (this.opts.wrtc) {
-            this.wrtc = new ClientSocketWrtc(
-                this.node,
-                this.opts.wrtc.controlPort,
-                this.opts.wrtc.dataPort,
-                this.opts.wrtc.controlIp,
-                this.opts.wrtc.dataIp
-            );
+        if (
+            this.node
+                .getSettings()
+                .getScope("sockets")
+                .getScope("wrtc")
+                .get("isEnabled")
+        ) {
+            this.wrtc = new ClientSocketWrtc(this.node);
             this.wrtc.on("listening", info => {
                 this.emit("listening", info);
             });

@@ -8,15 +8,7 @@ import { Content } from "@noia-network/node-contents-client/dist/content";
 
 import { Node } from "./node";
 import { ClientSocketEvents, ResourceSent, SocketType, ClientRequestData } from "./contracts";
-import { SettingsEnum } from "./settings";
 import { logger } from "./logger";
-
-export interface ClientSocketWrtcOptions {
-    controlPort: number;
-    controlIp: string;
-    dataPort: number;
-    dataIp: string;
-}
 
 type ClientSocketEmitter = StrictEventEmitter<EventEmitter, ClientSocketEvents>;
 
@@ -27,16 +19,8 @@ export class ClientSocketWrtc extends (EventEmitter as { new (): ClientSocketEmi
     private queueInterval: number = 3000;
     private contentResponseType?: protobuf.Type;
 
-    constructor(
-        private readonly node: Node,
-        public controlPort: number,
-        public dataPort: number,
-        public controlIp: string = "0.0.0.0",
-        public dataIp: string
-    ) {
+    constructor(private readonly node: Node) {
         super();
-        this.controlPort = controlPort || node.settings.options[SettingsEnum.wrtcControlPort];
-        this.dataPort = dataPort || node.settings.options[SettingsEnum.wrtcDataPort];
 
         // TODO: Refactor.
         protobuf.load(Wire.getProtoFilePath(), (err, root) => {
@@ -51,7 +35,16 @@ export class ClientSocketWrtc extends (EventEmitter as { new (): ClientSocketEmi
             this.contentResponseType = root.lookupType("ContentResponse");
         });
 
-        this.wrtc = new WebRtcDirect(this.controlPort, this.dataPort, this.controlIp, this.dataIp);
+        const wrtcSettings = this.node
+            .getSettings()
+            .getScope("sockets")
+            .getScope("wrtc");
+        this.wrtc = new WebRtcDirect(
+            wrtcSettings.get("controlPort"),
+            wrtcSettings.get("dataPort"),
+            wrtcSettings.get("controlIp"),
+            wrtcSettings.get("dataIp")
+        );
         this.wrtc.on("connection", (channel: Channel) => {
             logger.info(
                 `WebRTC client client-id=${channel.id} connected (wrtc): ip=${this.filterIp(
@@ -134,10 +127,14 @@ export class ClientSocketWrtc extends (EventEmitter as { new (): ClientSocketEmi
         this.emit("listening", {
             type: this.type
         });
+        const wrtcSettings = this.node
+            .getSettings()
+            .getScope("sockets")
+            .getScope("wrtc");
         logger.info(
-            `Listening for type=${this.type} clients connections: control-port=${this.controlPort} control-ip=${this.controlIp} data-port=${
-                this.dataPort
-            }.`
+            `Listening for type=${this.type} clients connections: control-port=${wrtcSettings.get(
+                "controlPort"
+            )} control-ip=${wrtcSettings.get("controlIp")} data-port=${wrtcSettings.get("dataPort")}.`
         );
     }
 
@@ -161,7 +158,7 @@ export class ClientSocketWrtc extends (EventEmitter as { new (): ClientSocketEmi
             return;
         }
 
-        const content = this.node.contentsClient.get(params.contentId) as Content;
+        const content = this.node.getContentsClient().get(params.contentId) as Content;
 
         if (content == null) {
             const responseMsg = `WebRTC client client-id=${channel.id} 404 response content-id=${params.contentId}.`;

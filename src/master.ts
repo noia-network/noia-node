@@ -15,7 +15,6 @@ import {
 
 import { Helpers } from "./helpers";
 import { Node } from "./node";
-import { SettingsEnum } from "./settings";
 import { StatisticsEnum } from "./statistics";
 import { logger } from "./logger";
 import { ProtocolEvent, Handshake, ClosedData, Clear, Seed, Response, NodeMetadata } from "@noia-network/protocol";
@@ -51,9 +50,9 @@ export class Master extends MasterEmitter implements ContentTransferer {
         super();
 
         setInterval(() => {
-            const totalTimeConnected = this.node.statistics.statistics[StatisticsEnum.totalTimeConnected];
+            const totalTimeConnected = this.node.getStatistics().statistics[StatisticsEnum.totalTimeConnected];
             if (this.connected) {
-                this.node.statistics.update(StatisticsEnum.totalTimeConnected, totalTimeConnected + 1);
+                this.node.getStatistics().update(StatisticsEnum.totalTimeConnected, totalTimeConnected + 1);
             }
         }, 1 * 1000);
     }
@@ -88,11 +87,15 @@ export class Master extends MasterEmitter implements ContentTransferer {
         );
     }
 
-    public async connect(address: string | WebSocket, jobPostDesc?: JobPostDescription): Promise<void> {
-        const skipBlockchain = this.node.settings.options[SettingsEnum.skipBlockchain];
+    public async connect(address: string | WebSocket | null, jobPostDesc?: JobPostDescription): Promise<void> {
+        const skipBlockchain = !this.node
+            .getSettings()
+            .getScope("blockchain")
+            .get("isEnabled");
 
-        if (!address) {
-            throw new Error("master address null or undefined");
+        if (address == null) {
+            logger.error(`Master address=${address} is invalid. Specify master address in settings if connecting directly.`);
+            return;
         }
 
         if (this.connected || this.destroyed || this.connecting) {
@@ -107,6 +110,7 @@ export class Master extends MasterEmitter implements ContentTransferer {
         const listeners = (): void => {
             this.getWire().on("warning", info => {
                 logger.warn(info.data.message);
+                this.node.emit("warning", info.data.message);
             });
             this.getWire().once("closed", info => {
                 this._onClosed(info);
@@ -138,25 +142,62 @@ export class Master extends MasterEmitter implements ContentTransferer {
                 });
         };
 
-        const isSsl = this.node.settings.options[SettingsEnum.ssl];
+        const isSsl = this.node
+            .getSettings()
+            .getScope("ssl")
+            .get("isEnabled");
+        const domain = this.node.getSettings().get("domain");
+        const airdropAddress = this.node
+            .getSettings()
+            .getScope("blockchain")
+            .get("airdropAddress");
         const nodeMetadata: NodeMetadata = {
-            nodeId: this.node.settings.options[SettingsEnum.nodeId],
-            interface: this.node.settings.options[SettingsEnum.isHeadless] ? "cli" : "gui",
+            nodeId: this.node.getSettings().get("nodeId"),
+            interface: this.node.opts.interface,
             connections: {
                 ws:
-                    isSsl === false && this.node.settings.options[SettingsEnum.ws] === true
-                        ? this.node.settings.options[SettingsEnum.wsPort]
+                    isSsl === false &&
+                    this.node
+                        .getSettings()
+                        .getScope("sockets")
+                        .getScope("ws")
+                        .get("isEnabled")
+                        ? this.node
+                              .getSettings()
+                              .getScope("sockets")
+                              .getScope("ws")
+                              .get("port")
                         : null,
                 wss:
-                    isSsl === true && this.node.settings.options[SettingsEnum.ws] === true
-                        ? this.node.settings.options[SettingsEnum.wsPort]
+                    isSsl === true &&
+                    this.node
+                        .getSettings()
+                        .getScope("sockets")
+                        .getScope("ws")
+                        .get("isEnabled")
+                        ? this.node
+                              .getSettings()
+                              .getScope("sockets")
+                              .getScope("ws")
+                              .get("port")
                         : null,
                 webrtc:
-                    this.node.settings.options[SettingsEnum.wrtc] === true ? this.node.settings.options[SettingsEnum.wrtcControlPort] : null
+                    this.node
+                        .getSettings()
+                        .getScope("sockets")
+                        .getScope("wrtc")
+                        .get("isEnabled") === true
+                        ? this.node
+                              .getSettings()
+                              .getScope("sockets")
+                              .getScope("wrtc")
+                              .get("controlPort")
+                        : null
             },
-            domain: this.node.settings.options[SettingsEnum.domain],
+            domain: domain != null ? domain : undefined,
             version: this.node.VERSION,
-            walletAddress: this.node.settings.options[SettingsEnum.walletAddress]
+            // TODO: Wallet address is mandatory, unless user does not care about reward. Needs discussion.
+            airdropAddress: airdropAddress
         };
 
         if (!skipBlockchain) {
@@ -164,13 +205,18 @@ export class Master extends MasterEmitter implements ContentTransferer {
                 throw new Error("Value of 'jobPostDescription' is invalid.");
             }
             this.jobPostDesc = jobPostDesc;
-            const signedMsg = await this.node.wallet.signMessage(msg);
+            const signedMsg = await this.node.getWallet().signMessage(msg);
+            const workOrderAddress = this.node
+                .getSettings()
+                .getScope("blockchain")
+                .get("workOrderAddress");
             const blockchainMetadata: NodeBlockchainMetadata = {
                 msg: msg,
                 msgSigned: signedMsg,
                 ...nodeMetadata,
                 jobPostAddress: this.jobPostDesc.jobPostAddress,
-                workOrderAddress: this.node.settings.options[SettingsEnum.workOrder]
+                workOrderAddress: workOrderAddress,
+                walletAddress: this.node.getWallet().getOwnerAddress()
             };
             logger.info("Sending metadata:", blockchainMetadata);
             this.wire = new Wire<NodeBlockchainMetadata, MasterBlockchainMetadata>(
@@ -182,7 +228,7 @@ export class Master extends MasterEmitter implements ContentTransferer {
                         throw new Error("Value of 'jobPostDescription' is invalid.");
                     }
                     logger.info(`Received metadata`, receivedMetadata);
-                    const recoveredAddress = this.node.wallet.recoverAddress(receivedMetadata.msg, receivedMetadata.msgSigned);
+                    const recoveredAddress = this.node.getWallet().recoverAddress(receivedMetadata.msg, receivedMetadata.msgSigned);
                     return this.jobPostDesc.employerWalletAddress === recoveredAddress;
                 }
             );
@@ -323,29 +369,29 @@ export class Master extends MasterEmitter implements ContentTransferer {
                 this.emit("clear", info);
                 // Clear everything if info resolves to false.
                 const infoHashes: string[] =
-                    info.data.infoHashes.length === 0 ? this.node.contentsClient.getInfoHashes() : info.data.infoHashes;
-                infoHashes.forEach(infoHash => this.node.contentsClient.remove(infoHash));
+                    info.data.infoHashes.length === 0 ? this.node.getContentsClient().getInfoHashes() : info.data.infoHashes;
+                infoHashes.forEach(infoHash => this.node.getContentsClient().remove(infoHash));
                 this.getWire().cleared(infoHashes);
             });
             this.getWire().on("seed", info => {
                 this.emit("seed", info);
                 const metadata = info.data.metadata;
-                if (this.node && this.node.contentsClient) {
+                if (this.node) {
                     if (!metadata || !metadata.infoHash || !metadata.pieces) {
                         return logger.warn("Cannot add to metadata store invalid metadadata, info = ", info);
                     }
                     logger.info(`metadata add: infoHash = ${metadata.infoHash}, pieces = ${metadata.pieces}`);
                     // TODO: move log to metadata store
-                    this.node.contentsClient.add(metadata);
+                    this.node.getContentsClient().add(metadata);
                 } else {
-                    logger.info("node or contentsClient undefined");
+                    logger.info("Node or contents client is undefined.");
                 }
             });
             this.getWire().on("response", info => {
                 this.emit("response", info);
             });
-            if (this.node && this.node.clientSockets) {
-                this.node.clientSockets.on("resourceSent", info => {
+            if (this.node && this.node.getClientSockets()) {
+                this.node.getClientSockets().on("resourceSent", info => {
                     try {
                         this.getWire().uploaded(info.resource.infoHash, info.resource.size, info.ip);
                     } catch (err) {

@@ -10,39 +10,31 @@ import { AddressInfo } from "net";
 import { Server as HttpServer } from "http";
 import { Server as HttpsServer } from "https";
 
-import { Node } from "./node";
-import { ClientSocketEvents, ResourceSent, SocketType, ClientRequestData, ClientResponseData } from "./contracts";
-import { SettingsEnum } from "./settings";
-import { logger } from "./logger";
+import { ClientSocketEvents, ResourceSent, SocketType, ClientRequestData } from "./contracts";
 import { Content } from "@noia-network/node-contents-client/dist/content";
+import { Node } from "./node";
 import { Wire } from "@noia-network/protocol";
-
-export interface ClientSocketWsOptions {
-    ip: string;
-    port: number;
-    ssl: boolean;
-    ssl_key: string;
-    ssl_cert: string;
-    ssl_ca: string;
-}
+import { logger } from "./logger";
 
 type ClientSocketEmitter = StrictEventEmitter<EventEmitter, ClientSocketEvents>;
 
 export class ClientSocketWs extends (EventEmitter as { new (): ClientSocketEmitter }) {
-    public ssl: boolean;
+    private contentResponseType?: protobuf.Type;
+    private queueInterval: number = 3000;
     private readonly protocolPrefix: string;
+    public queue: ResourceSent[] = [];
     public server: HttpServer | HttpsServer;
+    public ssl: boolean;
     public type: SocketType = SocketType.Ws;
     public wss: WebSocket.Server;
-    public queue: ResourceSent[] = [];
-    private queueInterval: number = 3000;
-    private contentResponseType?: protobuf.Type;
 
-    constructor(private readonly node: Node, public port: number, public ip: string = "0.0.0.0", public opts: ClientSocketWsOptions) {
+    constructor(private readonly node: Node) {
         super();
-        this.ssl = this.opts != null && this.opts.ssl === true;
+        this.ssl = this.node
+            .getSettings()
+            .getScope("ssl")
+            .get("isEnabled");
         this.protocolPrefix = this.ssl === true ? "WebSocket (secure)" : "WebSocket";
-        this.port = port || node.settings.options[SettingsEnum.wsPort];
 
         // TODO: Refactor.
         protobuf.load(Wire.getProtoFilePath(), (err, root) => {
@@ -57,20 +49,24 @@ export class ClientSocketWs extends (EventEmitter as { new (): ClientSocketEmitt
             this.contentResponseType = root.lookupType("ContentResponse");
         });
 
+        const sslSettings = this.node.getSettings().getScope("ssl");
+        const privateKeyPath = sslSettings.get("privateKeyPath");
+        const crtPath = sslSettings.get("crtPath");
+        const caBundlePath = sslSettings.get("caBundlePath");
         this.server =
-            this.ssl === true
+            this.ssl === true && privateKeyPath != null && crtPath != null && caBundlePath != null
                 ? https.createServer({
-                      key: fs.readFileSync(opts.ssl_key),
-                      cert: fs.readFileSync(opts.ssl_cert),
-                      ca: fs.readFileSync(opts.ssl_ca)
+                      key: fs.readFileSync(privateKeyPath),
+                      cert: fs.readFileSync(crtPath),
+                      ca: fs.readFileSync(caBundlePath)
                   })
                 : (this.server = http.createServer());
 
         this.server.on("error", err => {
             if (err.code === "EADDRINUSE") {
-                // do nothing
+                // Do nothing.
             } else {
-                // to be discovered
+                // To be discovered.
                 throw new Error(err.message);
             }
         });
@@ -156,27 +152,39 @@ export class ClientSocketWs extends (EventEmitter as { new (): ClientSocketEmitt
 
     public async listen(): Promise<void> {
         return new Promise<void>((resolve, reject) => {
-            this.server.listen(this.port, this.ip, (err: Error) => {
-                if (err) {
-                    reject(err);
-                    return;
-                }
+            this.server.listen(
+                this.node
+                    .getSettings()
+                    .getScope("sockets")
+                    .getScope("ws")
+                    .get("port"),
+                this.node
+                    .getSettings()
+                    .getScope("sockets")
+                    .getScope("ws")
+                    .get("ip"),
+                (err: Error) => {
+                    if (err) {
+                        reject(err);
+                        return;
+                    }
 
-                const addressInfo = this.server.address() as AddressInfo;
-                this.emit("listening", {
-                    type: this.type,
-                    port: addressInfo.port,
-                    ip: addressInfo.address,
-                    family: addressInfo.family,
-                    ssl: this.ssl
-                });
-                logger.info(
-                    `Listening for type=${this.ssl === true ? "wss" : "ws"} clients connections: ip=${addressInfo.address} port=${
-                        addressInfo.port
-                    } family=${addressInfo.family}.`
-                );
-                resolve();
-            });
+                    const addressInfo = this.server.address() as AddressInfo;
+                    this.emit("listening", {
+                        type: this.type,
+                        port: addressInfo.port,
+                        ip: addressInfo.address,
+                        family: addressInfo.family,
+                        ssl: this.ssl
+                    });
+                    logger.info(
+                        `Listening for type=${this.ssl === true ? "wss" : "ws"} clients connections: ip=${addressInfo.address} port=${
+                            addressInfo.port
+                        } family=${addressInfo.family}.`
+                    );
+                    resolve();
+                }
+            );
         });
     }
 
@@ -204,7 +212,7 @@ export class ClientSocketWs extends (EventEmitter as { new (): ClientSocketEmitt
             return;
         }
 
-        const content = this.node.contentsClient.get(params.contentId) as Content;
+        const content = this.node.getContentsClient().get(params.contentId) as Content;
         if (content == null) {
             const responseMsg = `${this.protocolPrefix} client client-id=${debugId} 404 response content-id=${params.contentId}.`;
             const msg = this.contentResponseType.create({

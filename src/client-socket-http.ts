@@ -11,7 +11,6 @@ import { Server } from "http";
 
 import { ClientSocketEvents, ResourceSent, SocketType, SocketListening } from "./contracts";
 import { Node } from "./node";
-import { SettingsEnum } from "./settings";
 import { logger } from "./logger";
 
 const app = express();
@@ -32,11 +31,8 @@ export class ClientSocketHttp extends (EventEmitter as { new (): ClientSocketEmi
     private queueInterval: number = 3000;
     private staticDir?: string;
 
-    constructor(public node: Node, public port: number, public ip: string = "0.0.0.0") {
+    constructor(public node: Node) {
         super();
-
-        this.port = port || node.settings.options[SettingsEnum.httpPort];
-
         this.server.on("error", err => {
             this.emit("error", err);
         });
@@ -50,7 +46,7 @@ export class ClientSocketHttp extends (EventEmitter as { new (): ClientSocketEmi
 
     public async listen(): Promise<void> {
         // TODO: move to common.
-        // group resources to save network bandwith and don't spam master
+        // Group resources to save network bandwith and don't spam master.
         setInterval(() => {
             const queue = this.queue.slice();
             this.queue = [];
@@ -148,24 +144,36 @@ export class ClientSocketHttp extends (EventEmitter as { new (): ClientSocketEmi
             });
         }
         return new Promise<void>((resolve, reject) => {
-            this.server.listen(this.port, this.ip, (err: Error) => {
-                if (err) {
-                    reject(err);
-                    return;
-                }
+            this.server.listen(
+                this.node
+                    .getSettings()
+                    .getScope("sockets")
+                    .getScope("http")
+                    .get("port"),
+                this.node
+                    .getSettings()
+                    .getScope("sockets")
+                    .getScope("http")
+                    .get("ip"),
+                (err: Error) => {
+                    if (err) {
+                        reject(err);
+                        return;
+                    }
 
-                this.listening = true;
-                const addressInfo = this.server.address() as AddressInfo;
-                const listeningInfo: SocketListening = {
-                    type: this.type,
-                    port: addressInfo.port,
-                    ip: addressInfo.address,
-                    family: addressInfo.family
-                };
-                this.emit("listening", listeningInfo);
-                resolve();
-                logger.info("Listening for HTTP requests on port 7676:", listeningInfo);
-            });
+                    this.listening = true;
+                    const addressInfo = this.server.address() as AddressInfo;
+                    const listeningInfo: SocketListening = {
+                        type: this.type,
+                        port: addressInfo.port,
+                        ip: addressInfo.address,
+                        family: addressInfo.family
+                    };
+                    this.emit("listening", listeningInfo);
+                    resolve();
+                    logger.info("Listening for HTTP requests on port 7676:", listeningInfo);
+                }
+            );
         });
     }
 

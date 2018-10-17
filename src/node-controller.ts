@@ -7,7 +7,6 @@ import readline from "readline";
 import swaggerUi from "swagger-ui-express";
 
 import { Node } from "./node";
-import { SettingsEnum } from "./settings";
 import { logger } from "./logger";
 
 const router = express.Router();
@@ -25,18 +24,20 @@ app.use("/api", router);
 export class NodeController {
     constructor(public node: Node) {
         router.route("/statistics").get((req: any, res: any, next: any) => {
-            res.json(this.node.statistics.statistics);
+            res.json(this.node.getStatistics().statistics);
         });
         router.route("/storage").get((req: any, res: any, next: any) => {
-            node.storageSpace.stats().then((stats: any) => {
-                res.json(stats);
-            });
+            node.getStorageSpace()
+                .stats()
+                .then((stats: any) => {
+                    res.json(stats);
+                });
         });
         router.route("/contents").get((req: any, res: any, next: any) => {
-            res.json(node.contentsClient.getInfoHashes());
+            res.json(node.getContentsClient().getInfoHashes());
         });
         router.route("/settings").get((req: any, res: any, next: any) => {
-            res.json(node.settings.options);
+            res.json(node.getSettings().readSettings());
         });
         router.route("/logs").get((req: any, res: any, next: any) => {
             const data: object[] = [];
@@ -66,6 +67,16 @@ export class NodeController {
                 }
             });
         });
-        app.listen(node.settings.options[SettingsEnum.controllerPort], node.settings.options[SettingsEnum.controllerIp]);
+        const controllerIp = node
+            .getSettings()
+            .getScope("controller")
+            .get("ip");
+        app.listen(
+            node
+                .getSettings()
+                .getScope("controller")
+                .get("port"),
+            controllerIp != null ? controllerIp : "127.0.0.1"
+        );
     }
 }

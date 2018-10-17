@@ -125,6 +125,7 @@ declare module "@noia-network/governance" {
     export class WorkOrder {
         accept(): Promise<void>;
         address: string;
+        getWorkerOwner(): Promise<string>;
         delegatedAccept(nonce: number, sig: string): Promise<void>;
         delegatedRelease(beneficiary: string, nonce: number, sig: string): Promise<void>;
         generateSignedAcceptRequest(nonce: number): Promise<any>;

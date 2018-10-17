@@ -16,13 +16,7 @@ export class StorageSpace {
     public metadataPath: string;
 
     constructor(public storageDir: string, public allocated: number) {
-        if (!storageDir) {
-            throw new Error("unspecified storageDir");
-        }
-        if (!allocated) {
-            throw new Error("unspecified storageAllocated");
-        }
-
+        logger.info(`Storage dir=${storageDir}, allocated=${allocated}.`);
         this.storageDir = path.resolve(storageDir);
         this.metadataPath = path.join(storageDir, "metadata.json");
     }

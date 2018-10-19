@@ -5,8 +5,15 @@ import { Data } from "speedtest-net";
 import { config as dotenvConfig } from "dotenv";
 
 import { EnvConfig } from "./contracts";
+import { NodeSettings } from "@noia-network/node-settings";
 
 export namespace Helpers {
+    export function getStorageDir(settings: NodeSettings): string {
+        const settingsStorageDir = settings.getScope("storage").get("dir");
+        const storageDir = settingsStorageDir != null ? settingsStorageDir : path.join(settings.get("userDataPath"), "storage");
+        return storageDir;
+    }
+
     export async function getSpeedTest(): Promise<Data> {
         return new Promise<Data>((resolve, reject) => {
             const test = speedTest({

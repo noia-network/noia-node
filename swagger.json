@@ -1,104 +1,77 @@
 {
-  "swagger": "2.0",
-  "info": {
-    "version": "0.0.0",
-    "title": "Node API",
-    "description": "Node API",
-    "license": {
-      "name": "MIT",
-      "url": "https://opensource.org/licenses/MIT"
+    "swagger": "2.0",
+    "info": {
+        "version": "0.0.0",
+        "title": "Node API",
+        "description": "Node API",
+        "license": {
+            "name": "MIT",
+            "url": "https://opensource.org/licenses/MIT"
+        }
+    },
+    "host": "localhost:9000",
+    "basePath": "/api",
+    "tags": [
+        {
+            "name": "Settings",
+            "description": "API for node settings"
+        },
+        {
+            "name": "Contents",
+            "description": "API for node contents"
+        },
+        {
+            "name": "Logs",
+            "description": "API for node logs"
+        }
+    ],
+    "schemes": ["http"],
+    "consumes": ["application/json"],
+    "produces": ["application/json"],
+    "paths": {
+        "/settings": {
+            "get": {
+                "tags": ["Settings"],
+                "summary": "Get all settings",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/storage": {
+            "get": {
+                "tags": ["Storage"],
+                "summary": "Get storage info",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/contents": {
+            "get": {
+                "tags": ["Contents"],
+                "summary": "Get all contents",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/logs": {
+            "get": {
+                "tags": ["Logs"],
+                "summary": "Get all logs",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        }
     }
-  },
-  "host": "localhost:9000",
-  "basePath": "/api",
-  "tags": [
-    {
-      "name": "Settings",
-      "description": "API for node settings"
-    },
-    {
-      "name": "Contents",
-      "description": "API for node contents"
-    },
-    {
-      "name": "Logs",
-      "description": "API for node logs"
-    }
-  ],
-  "schemes": [
-    "http"
-  ],
-  "consumes": [
-    "application/json"
-  ],
-  "produces": [
-    "application/json"
-  ],
-  "paths": {
-    "/settings": {
-      "get": {
-        "tags": [
-          "Settings"
-        ],
-        "summary": "Get all settings",
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/statistics": {
-      "get": {
-        "tags": [
-          "Statistics"
-        ],
-        "summary": "Get all statistics",
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/storage": {
-      "get": {
-        "tags": [
-          "Storage"
-        ],
-        "summary": "Get storage info",
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/contents": {
-      "get": {
-        "tags": [
-          "Contents"
-        ],
-        "summary": "Get all contents",
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/logs": {
-      "get": {
-        "tags": [
-          "Logs"
-        ],
-        "summary": "Get all logs",
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    }
-  }
 }

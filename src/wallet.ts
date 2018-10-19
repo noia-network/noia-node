@@ -9,6 +9,9 @@ const noiaGovernance = new NoiaSdk();
 import { Node } from "./node";
 import { ProtocolEvent, SignedRequest } from "@noia-network/protocol";
 import { logger } from "./logger";
+import { BlockchainSettingsDto } from "@noia-network/node-settings/dist/settings/blockchain-settings";
+import { SettingsScopeBase } from "@noia-network/node-settings";
+import { MasterState } from "./master";
 
 interface BlockPosition {
     number?: number;
@@ -25,28 +28,44 @@ export interface JobPostDescription {
     blockPosition: string | null;
 }
 
+export enum BlockchainState {
+    /**
+     * Default state.
+     */
+    Initializing = "initializing",
+    /**
+     * Governance SDK is initialized.
+     */
+    Initialized = "initialized",
+    /**
+     * Checking saved work order.
+     */
+    CheckingSavedWorkOrder = "checking-saved-work-order",
+    /**
+     * Searching for a new job post.
+     */
+    SearchingForJobPost = "searching-for-job-post",
+    /**
+     * Working on a particular work order.
+     */
+    Working = "working"
+}
+
 export class Wallet extends EventEmitter {
     private ready: boolean = false;
-    private node: Node;
+
+    public state: BlockchainState = BlockchainState.Initializing;
     public nodeAddress: string | undefined;
-    public nodeRegistrationPassed: boolean;
+    public nodeRegistrationPassed: boolean = false;
     public noiaBalance: number | undefined;
     private nextJob: any;
     private workTimeoutId?: NodeJS.Timer;
+    private settings: SettingsScopeBase<BlockchainSettingsDto> = this.node.getSettings().getScope("blockchain");
 
-    constructor(node: Node, walletMnemonic: string, providerUrl: string | null) {
+    constructor(private readonly node: Node) {
         super();
-        this.nodeRegistrationPassed = false;
-        this.node = node;
-
-        if (
-            !this.node
-                .getSettings()
-                .getScope("blockchain")
-                .get("isEnabled")
-        ) {
-            return;
-        }
+        const walletMnemonic: string = this.settings.get("walletMnemonic");
+        const providerUrl: string | null = this.settings.get("walletProviderUrl");
 
         if (!validateMnemonic(walletMnemonic)) {
             const msg = "Wallet mnemonic is not valid bip39 mnemonic. Use at your own risk.";
@@ -75,6 +94,7 @@ export class Wallet extends EventEmitter {
             .then(async () => {
                 await this.checkWorkOrder();
                 this.ready = true;
+                this.state = BlockchainState.Initialized;
                 this.emit("ready");
             })
             .catch((err: Error) => {
@@ -104,10 +124,7 @@ export class Wallet extends EventEmitter {
             this.workTimeoutId = undefined;
         }
         // Drop work order we were working on so it wont be attempted when finding new job.
-        this.node
-            .getSettings()
-            .getScope("blockchain")
-            .reset("workOrderAddress");
+        this.settings.reset("workOrderAddress");
     }
 
     public async getWorkOrder(workOrderAddress: string): Promise<WorkOrder> {
@@ -132,10 +149,7 @@ export class Wallet extends EventEmitter {
     }
 
     public async lazyNodeRegistration(nodeAddress: string | null): Promise<boolean> {
-        const doCreateClient = this.node
-            .getSettings()
-            .getScope("blockchain")
-            .get("doCreateClient");
+        const doCreateClient = this.settings.get("doCreateClient");
         await this._ready();
         if (this.nodeRegistrationPassed) {
             logger.info(`Skipping node lazy registration!`);
@@ -155,10 +169,7 @@ export class Wallet extends EventEmitter {
                         return true;
                     } else {
                         logger.warn(`Node node-address=${nodeAddress} belongs to other walllet, removing...`);
-                        this.node
-                            .getSettings()
-                            .getScope("blockchain")
-                            .reset("clientAddress");
+                        this.settings.reset("clientAddress");
                         return false;
                     }
                 } else {
@@ -177,7 +188,7 @@ export class Wallet extends EventEmitter {
                     this.nodeRegistrationPassed = true;
                     return true;
                 } catch (err) {
-                    this.node.getWallet().earnTestEth();
+                    this.earnTestEth();
                     return false;
                 }
             } else {
@@ -204,10 +215,7 @@ export class Wallet extends EventEmitter {
         try {
             await this._ready();
             const nodeClient = await noiaGovernance.createNodeClient({});
-            this.node
-                .getSettings()
-                .getScope("blockchain")
-                .update("clientAddress", nodeClient.address);
+            this.settings.update("clientAddress", nodeClient.address);
             return nodeClient.address;
         } catch (err) {
             logger.error("Error while creating node client address:", err);
@@ -229,10 +237,7 @@ export class Wallet extends EventEmitter {
      * Check if work order is retrievable from work address. If it is not - delete saved work order address from settings.
      */
     private async checkWorkOrder(): Promise<void> {
-        const workOrderAddress = this.node
-            .getSettings()
-            .getScope("blockchain")
-            .get("workOrderAddress");
+        const workOrderAddress = this.settings.get("workOrderAddress");
 
         // Check only if it is defined and potentially valid one.
         if (workOrderAddress == null || workOrderAddress === "") {
@@ -244,18 +249,12 @@ export class Wallet extends EventEmitter {
             await baseClient.getWorkOrderAt(workOrderAddress);
         } catch (err) {
             logger.warn(`Work-order-address=${workOrderAddress} seemed to be invalid... removing.`);
-            this.node
-                .getSettings()
-                .getScope("blockchain")
-                .reset("workOrderAddress");
+            this.settings.reset("workOrderAddress");
         }
     }
 
     private getBlockStartPosition(latestBlock: number): BlockPosition {
-        const settingsLastBlockPosition = this.node
-            .getSettings()
-            .getScope("blockchain")
-            .get("lastBlockPosition");
+        const settingsLastBlockPosition = this.settings.get("lastBlockPosition");
         if (settingsLastBlockPosition == null) {
             return {};
         }
@@ -265,10 +264,7 @@ export class Wallet extends EventEmitter {
             index: parseInt(lastBlockPosition[1])
         };
         if (blockPosition.number > latestBlock) {
-            this.node
-                .getSettings()
-                .getScope("blockchain")
-                .reset("lastBlockPosition");
+            this.settings.reset("lastBlockPosition");
             return {};
         }
         return blockPosition;
@@ -276,13 +272,11 @@ export class Wallet extends EventEmitter {
 
     public async findNextJob(): Promise<JobPostDescription> {
         await this._ready();
-        const workOrderAddress = this.node
-            .getSettings()
-            .getScope("blockchain")
-            .get("workOrderAddress");
+        const workOrderAddress = this.settings.get("workOrderAddress");
 
         let attemptedSavedWorkOrder = false;
         if (workOrderAddress != null && workOrderAddress !== "") {
+            this.state = BlockchainState.CheckingSavedWorkOrder;
             attemptedSavedWorkOrder = true;
             const baseClient = await noiaGovernance.getBaseClient();
             const workOrder = await baseClient.getWorkOrderAt(workOrderAddress);
@@ -303,6 +297,7 @@ export class Wallet extends EventEmitter {
         }
 
         logger.info(`Scanning blockchain for new job post (attempted-saved-work-order=${attemptedSavedWorkOrder})... `);
+        this.state = BlockchainState.SearchingForJobPost;
         // Get a fresh new base client to pull in the next jobs.
         let blockStartPosition: BlockPosition = {};
         if (this.nextJob == null) {
@@ -457,6 +452,7 @@ export class Wallet extends EventEmitter {
             this.node.getMaster().close();
             return;
         }
+        this.state = BlockchainState.Working;
         const currentTimeSeconds = new Date().getTime() / 1000;
         let timeDiff = timeLock.until - currentTimeSeconds;
         timeDiff = timeDiff < 0 ? 0 : timeDiff;
@@ -492,10 +488,7 @@ export class Wallet extends EventEmitter {
             logger.warn("Master doesn't have funds, disconnecting!");
             this.node.getMaster().close();
         } else {
-            this.node
-                .getSettings()
-                .getScope("blockchain")
-                .update("workOrderAddress", workOrder.address);
+            this.settings.update("workOrderAddress", workOrder.address);
             const hasLockedTokens = await workOrder.hasTimelockedTokens();
             if (hasLockedTokens && (await workOrder.isAccepted())) {
                 this.doWork(workOrder);
@@ -512,10 +505,7 @@ export class Wallet extends EventEmitter {
     }
 
     public async onReceivedSignedRequest(receivedSignedRequest: ProtocolEvent<SignedRequest>): Promise<void> {
-        const workOrderAddress = this.node
-            .getSettings()
-            .getScope("blockchain")
-            .get("workOrderAddress");
+        const workOrderAddress = this.settings.get("workOrderAddress");
         if (workOrderAddress == null) {
             logger.error("Work order address is invalid!");
             return;
@@ -566,10 +556,7 @@ export class Wallet extends EventEmitter {
                 const timeLock = await workOrder.getTimelockedEarliest();
                 logger.info("Time lock", timeLock);
                 if (timeLock == null) {
-                    this.node
-                        .getSettings()
-                        .getScope("blockchain")
-                        .reset("workOrderAddress");
+                    this.settings.reset("workOrderAddress");
                     logger.error("No more time locks, disconnecting from master and searching for new jobs...");
                     this.node.stop();
                     this.node.getMaster().removeAllListeners("signedRequest");

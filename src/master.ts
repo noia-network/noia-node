@@ -10,19 +10,34 @@ import {
     WorkOrder,
     SignedRequest,
     StorageData,
-    BandwidthData
+    BandwidthData,
+    Statistics
 } from "@noia-network/protocol";
+import { ContentTransferer, ContentTransfererEvents } from "@noia-network/node-contents-client";
+import { ProtocolEvent, Handshake, ClosedData, Clear, Seed, Response, NodeMetadata } from "@noia-network/protocol";
 
 import { Helpers } from "./helpers";
 import { Node } from "./node";
-import { StatisticsEnum } from "./statistics";
 import { logger } from "./logger";
-import { ProtocolEvent, Handshake, ClosedData, Clear, Seed, Response, NodeMetadata } from "@noia-network/protocol";
-import { ContentTransferer, ContentTransfererEvents } from "@noia-network/node-contents-client";
 import { JobPostDescription } from "./wallet";
 import { WebSocketCloseEvent } from "./contracts";
 
 const config = Helpers.getConfig();
+
+export enum MasterState {
+    /**
+     * Node is connect to master node.
+     */
+    Connected = "connected",
+    /**
+     * Node is connecting from master node.
+     */
+    Connecting = "connecting",
+    /**
+     * Node is connecting to master node.
+     */
+    Disconnected = "disconnected"
+}
 
 interface MasterEvents extends ContentTransfererEvents {
     clear: (data: ProtocolEvent<Clear>) => this;
@@ -33,41 +48,33 @@ interface MasterEvents extends ContentTransfererEvents {
     seed: (data: ProtocolEvent<Seed>) => this;
     workOrder: (data: ProtocolEvent<WorkOrder>) => this;
     signedRequest: (data: ProtocolEvent<SignedRequest>) => this;
+    statistics: (data: ProtocolEvent<Statistics>) => this;
 }
 
 const MasterEmitter: { new (): StrictEventEmitter<EventEmitter, MasterEvents> } = EventEmitter;
 
 export class Master extends MasterEmitter implements ContentTransferer {
-    public address?: string | WebSocket;
-    public jobPostDesc?: JobPostDescription;
-    public connected: boolean = false;
-    public destroyed: boolean = false;
-    public connecting: boolean = false;
-    public canReconnect: boolean = false;
-    private wire: undefined | Wire<NodeBlockchainMetadata, MasterBlockchainMetadata> | Wire<NodeMetadata, MasterMetadata>;
-
     constructor(private readonly node: Node) {
         super();
-
-        setInterval(() => {
-            const totalTimeConnected = this.node.getStatistics().statistics[StatisticsEnum.totalTimeConnected];
-            if (this.connected) {
-                this.node.getStatistics().update(StatisticsEnum.totalTimeConnected, totalTimeConnected + 1);
-            }
-        }, 1 * 1000);
     }
 
-    public setAddress(address: string): void {
-        if (this.connecting) {
-            this.emit("error", new Error("cannot change address while connecting to master"));
-        }
-        if (this.connected) {
-            this.emit("error", new Error("cannot change address while connected to master"));
-        }
-        if (this.destroyed) {
-            return;
-        }
+    private wire: undefined | Wire<NodeBlockchainMetadata, MasterBlockchainMetadata> | Wire<NodeMetadata, MasterMetadata>;
 
+    /**
+     * Node connection to master node state.
+     */
+    public state: MasterState = MasterState.Disconnected;
+    public address?: string | WebSocket;
+    public jobPostDesc?: JobPostDescription;
+    public canReconnect: boolean = false;
+
+    public setAddress(address: string): void {
+        if (this.state === MasterState.Connecting) {
+            this.emit("error", new Error("Cannot change master address while connecting."));
+        }
+        if (this.state === MasterState.Connected) {
+            this.emit("error", new Error("Cannot change master address while connected to master."));
+        }
         this.address = address;
     }
 
@@ -88,21 +95,17 @@ export class Master extends MasterEmitter implements ContentTransferer {
     }
 
     public async connect(address: string | WebSocket | null, jobPostDesc?: JobPostDescription): Promise<void> {
-        const skipBlockchain = !this.node
-            .getSettings()
-            .getScope("blockchain")
-            .get("isEnabled");
-
         if (address == null) {
             logger.error(`Master address=${address} is invalid. Specify master address in settings if connecting directly.`);
             return;
         }
 
-        if (this.connected || this.destroyed || this.connecting) {
+        if (this.state === MasterState.Connected || this.state === MasterState.Connecting) {
             return;
         }
+
         this.canReconnect = true;
-        this.connecting = true;
+        this.state = MasterState.Connecting;
         this.address = address;
 
         const msg = config.MSG ? config.MSG : randombytes(4).toString("hex");
@@ -117,28 +120,27 @@ export class Master extends MasterEmitter implements ContentTransferer {
             });
             this.getWire().once("error", err => {
                 logger.error("Could not connect to master", err);
-                this.connecting = false;
+                this.state = MasterState.Connecting;
                 this.emit("error", err);
             });
 
             this.getWire()
                 .handshakeResult()
                 .then(info => {
-                    if (!this.connecting) {
+                    if (this.state !== MasterState.Connecting) {
                         return;
                     }
-                    this.connecting = false;
                     this.registerEvents();
-                    this.connected = true;
+                    this.state = MasterState.Connected;
                     process.nextTick(() => {
                         this.emit("connected", info);
                     });
                 })
                 .catch(info => {
-                    if (!this.connecting) {
+                    if (this.state !== MasterState.Connecting) {
                         return;
                     }
-                    this.connecting = false;
+                    this.state = MasterState.Disconnected;
                 });
         };
 
@@ -195,12 +197,17 @@ export class Master extends MasterEmitter implements ContentTransferer {
                         : null
             },
             domain: domain != null ? domain : undefined,
-            version: this.node.VERSION,
+            version: Node.VERSION,
             // TODO: Wallet address is mandatory, unless user does not care about reward. Needs discussion.
             airdropAddress: airdropAddress
         };
 
-        if (!skipBlockchain) {
+        if (
+            this.node
+                .getSettings()
+                .getScope("blockchain")
+                .get("isEnabled")
+        ) {
             if (!jobPostDesc) {
                 throw new Error("Value of 'jobPostDescription' is invalid.");
             }
@@ -249,8 +256,7 @@ export class Master extends MasterEmitter implements ContentTransferer {
     }
 
     private _onClosed(info: ClosedData): void {
-        this.connected = false;
-        this.connecting = false;
+        this.state = MasterState.Disconnected;
         logger.info("Connection with master closed", info);
         if (
             info.wasClean === false ||
@@ -282,13 +288,14 @@ export class Master extends MasterEmitter implements ContentTransferer {
     }
 
     public async close(): Promise<void> {
-        if (this.destroyed) {
-            throw new Error("master connection is already destroyed");
+        if (this.state === MasterState.Disconnected) {
+            logger.warn("Node is not connected to master.");
+            return;
         }
-        this.destroyed = true;
+        this.state = MasterState.Disconnected;
 
         return new Promise<void>((resolve, reject) => {
-            if (this.connected) {
+            if (this.state === MasterState.Connected) {
                 this.getWire().close(1000, "Normal disconnect.");
                 this._onClosed({
                     code: 100,
@@ -296,7 +303,7 @@ export class Master extends MasterEmitter implements ContentTransferer {
                     reason: "Normal disconnect."
                 });
                 resolve();
-            } else if (this.connecting) {
+            } else if (this.state === MasterState.Connecting) {
                 this.on("connected", () => {
                     this.getWire().close(1000, "Normal disconnect.");
                     this._onClosed({
@@ -313,12 +320,20 @@ export class Master extends MasterEmitter implements ContentTransferer {
         });
     }
 
-    public uploaded(infoHash: string, bandwidth: number, ip: string): void {
+    public uploaded(infoHash: string, bandwidth: number): void {
         if (!this.getWire().isReady()) {
             logger.warn("uploaded() called when not connected to master...");
             return;
         }
-        this.getWire().uploaded(infoHash, bandwidth, ip);
+        this.getWire().uploaded(infoHash, bandwidth);
+    }
+
+    public downloaded(infoHash: string, bandwidth: number): void {
+        if (!this.getWire().isReady()) {
+            logger.warn("downloaded() called when not connected to master...");
+            return;
+        }
+        this.getWire().downloaded(infoHash, bandwidth);
     }
 
     public storage(params: StorageData): void {
@@ -329,10 +344,6 @@ export class Master extends MasterEmitter implements ContentTransferer {
     }
 
     public bandwidth(params: BandwidthData): void {
-        if (this.wire == null) {
-            // Ignore since we have set interval inside node.ts.
-            return;
-        }
         if (this.getWire().isReady()) {
             logger.info(`Notifying master on changed bandwidth:`, params);
             this.getWire().bandwidthData(params);
@@ -347,7 +358,7 @@ export class Master extends MasterEmitter implements ContentTransferer {
     }
 
     public isConnected(): boolean {
-        return this.connected;
+        return this.state === MasterState.Connected;
     }
 
     public signedRequest(params: SignedRequest): void {
@@ -357,6 +368,12 @@ export class Master extends MasterEmitter implements ContentTransferer {
 
     private registerEvents(): void {
         try {
+            this.getWire().on("statistics", info => {
+                logger.info(
+                    `Master send statistics: time=${info.data.time}, downloaded=${info.data.downloaded}, uploaded=${info.data.uploaded}.`
+                );
+                this.emit("statistics", info);
+            });
             this.getWire().on("signedRequest", info => {
                 logger.info(`Master sent signed-request:`, info.data);
                 this.emit("signedRequest", info);
@@ -393,7 +410,8 @@ export class Master extends MasterEmitter implements ContentTransferer {
             if (this.node && this.node.getClientSockets()) {
                 this.node.getClientSockets().on("resourceSent", info => {
                     try {
-                        this.getWire().uploaded(info.resource.infoHash, info.resource.size, info.ip);
+                        logger.debug(`Client sockets 'uploaded' event, chunk-size=${info.resource.size}.`);
+                        this.getWire().uploaded(info.resource.infoHash, info.resource.size);
                     } catch (err) {
                         logger.warn("Could not send uploaded stats to master", err);
                     }

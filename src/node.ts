@@ -24,7 +24,8 @@ export enum NodeState {
     Initialized = "initialized",
     Started = "started",
     Stopped = "stopped",
-    Destroyed = "destroyed"
+    Destroyed = "destroyed",
+    Error = "error"
 }
 
 interface NodeEvents {
@@ -184,7 +185,7 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
                 await this.restart(15);
             } else {
                 this.stop();
-                this.emit("error", err);
+                this.emitError(err);
             }
         });
         this.getMaster().on("closed", closeEvent => {
@@ -198,7 +199,7 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
 
         this.getClientSockets().on("error", (err: Error) => {
             this.stop();
-            this.emit("error", err);
+            this.emitError(err);
         });
 
         // Update total uploaded and uploaded statistics.
@@ -213,6 +214,7 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
         //     this.getMaster().uploaded("", chunkSize);
         // });
         logger.info("NOIA node initialized.");
+        this.state = NodeState.Initialized;
     }
 
     /**
@@ -366,6 +368,13 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
             throw new Error("Node client sockets are not initialized.");
         }
         return this.clientSockets;
+    }
+
+    private emitError(err: Error): void {
+        if (this.state !== NodeState.Error) {
+            this.emit("error", err);
+            this.state = NodeState.Error;
+        }
     }
 
     // TODO: Remove deprecated methods.

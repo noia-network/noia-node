@@ -92,9 +92,12 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
     /**
      * Initialize NOIA Node.
      */
-    public async init(settingsPath?: string): Promise<void> {
-        // Settings.
-        this.settings = await NodeSettings.init(settingsPath);
+    public async init(nodeSettings?: NodeSettings): Promise<void> {
+        if (nodeSettings != null) {
+            this.settings = nodeSettings;
+        } else {
+            this.settings = await NodeSettings.init();
+        }
         logger.info(`Initializing NOIA node, settings-path=${this.settings.filePath}.`);
         this.settings.on("updated", updatedEvent => {
             logger.info(
@@ -205,8 +208,8 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
         // Update total uploaded and uploaded statistics.
         this.getContentsClient().on("downloaded", (chunkSize: number) => {
             logger.debug(`Contents client 'downloaded' event, chunk-size=${chunkSize}.`);
-            // TODO: Update contents client so contentId is known.
-            this.getMaster().downloaded("", chunkSize);
+            // TODO: Update contents client so contentId and IP is known.
+            this.getMaster().downloaded("", "", chunkSize);
         });
         // this.getContentsClient().on("uploaded", (chunkSize: number) => {
         //     logger.debug(`Contents client 'uploaded' event, chunk-size=${chunkSize}.`);

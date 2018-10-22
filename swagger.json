@@ -29,17 +29,6 @@
     "consumes": ["application/json"],
     "produces": ["application/json"],
     "paths": {
-        "/settings": {
-            "get": {
-                "tags": ["Settings"],
-                "summary": "Get all settings",
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    }
-                }
-            }
-        },
         "/storage": {
             "get": {
                 "tags": ["Storage"],

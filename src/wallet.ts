@@ -11,7 +11,6 @@ import { ProtocolEvent, SignedRequest } from "@noia-network/protocol";
 import { logger } from "./logger";
 import { BlockchainSettingsDto } from "@noia-network/node-settings/dist/settings/blockchain-settings";
 import { SettingsScopeBase } from "@noia-network/node-settings";
-import { MasterState } from "./master";
 
 interface BlockPosition {
     number?: number;

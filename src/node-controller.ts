@@ -33,9 +33,9 @@ export class NodeController {
         router.route("/contents").get((req: any, res: any, next: any) => {
             res.json(node.getContentsClient().getInfoHashes());
         });
-        router.route("/settings").get((req: any, res: any, next: any) => {
-            res.json(node.getSettings().readSettings());
-        });
+        // router.route("/settings").get((req: any, res: any, next: any) => {
+        //     res.json(node.getSettings().readSettings());
+        // });
         router.route("/logs").get((req: any, res: any, next: any) => {
             const data: object[] = [];
             const filepath = "./noia-node.log";

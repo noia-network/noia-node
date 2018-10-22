@@ -115,6 +115,14 @@ export class Master extends MasterEmitter implements ContentTransferer {
                 logger.warn(info.data.message);
                 this.node.emit("warning", info.data.message);
             });
+            this.getWire().on("statistics", info => {
+                logger.info(
+                    `Received statistics: downloaded=${info.data.downloaded}, uploaded=${info.data.uploaded}, online for ${
+                        info.data.time.hours
+                    } hours, ${info.data.time.minutes} minues, ${info.data.time.seconds} second(s).`
+                );
+                this.emit("statistics", info);
+            });
             this.getWire().once("closed", info => {
                 this._onClosed(info);
             });
@@ -320,20 +328,22 @@ export class Master extends MasterEmitter implements ContentTransferer {
         });
     }
 
-    public uploaded(infoHash: string, bandwidth: number): void {
+    public uploaded(infoHash: string, ip: string, bandwidth: number): void {
         if (!this.getWire().isReady()) {
             logger.warn("uploaded() called when not connected to master...");
             return;
         }
-        this.getWire().uploaded(infoHash, bandwidth);
+        logger.debug(`Uploaded info-hash=${infoHash}, ip=${ip}, bandwidth=${bandwidth}.`);
+        this.getWire().uploaded(infoHash, ip, bandwidth);
     }
 
-    public downloaded(infoHash: string, bandwidth: number): void {
+    public downloaded(infoHash: string, ip: string, bandwidth: number): void {
         if (!this.getWire().isReady()) {
             logger.warn("downloaded() called when not connected to master...");
             return;
         }
-        this.getWire().downloaded(infoHash, bandwidth);
+        logger.debug(`Downloaded info-hash=${infoHash}, ip=${ip}, bandwidth=${bandwidth}.`);
+        this.getWire().downloaded(infoHash, ip, bandwidth);
     }
 
     public storage(params: StorageData): void {
@@ -368,12 +378,6 @@ export class Master extends MasterEmitter implements ContentTransferer {
 
     private registerEvents(): void {
         try {
-            this.getWire().on("statistics", info => {
-                logger.info(
-                    `Master send statistics: time=${info.data.time}, downloaded=${info.data.downloaded}, uploaded=${info.data.uploaded}.`
-                );
-                this.emit("statistics", info);
-            });
             this.getWire().on("signedRequest", info => {
                 logger.info(`Master sent signed-request:`, info.data);
                 this.emit("signedRequest", info);
@@ -407,11 +411,11 @@ export class Master extends MasterEmitter implements ContentTransferer {
             this.getWire().on("response", info => {
                 this.emit("response", info);
             });
-            if (this.node && this.node.getClientSockets()) {
+            if (this.node != null && this.node.getClientSockets() != null) {
                 this.node.getClientSockets().on("resourceSent", info => {
                     try {
                         logger.debug(`Client sockets 'uploaded' event, chunk-size=${info.resource.size}.`);
-                        this.getWire().uploaded(info.resource.infoHash, info.resource.size);
+                        this.getWire().uploaded(info.resource.infoHash, info.ip, info.resource.size);
                     } catch (err) {
                         logger.warn("Could not send uploaded stats to master", err);
                     }

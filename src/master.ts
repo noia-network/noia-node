@@ -24,18 +24,9 @@ import { WebSocketCloseEvent } from "./contracts";
 
 const config = Helpers.getConfig();
 
-export enum MasterState {
-    /**
-     * Node is connect to master node.
-     */
+export enum MasterConnectionState {
     Connected = "connected",
-    /**
-     * Node is connecting from master node.
-     */
     Connecting = "connecting",
-    /**
-     * Node is connecting to master node.
-     */
     Disconnected = "disconnected"
 }
 
@@ -63,16 +54,16 @@ export class Master extends MasterEmitter implements ContentTransferer {
     /**
      * Node connection to master node state.
      */
-    public state: MasterState = MasterState.Disconnected;
+    public connectionState: MasterConnectionState = MasterConnectionState.Disconnected;
     public address?: string | WebSocket;
     public jobPostDesc?: JobPostDescription;
     public canReconnect: boolean = false;
 
     public setAddress(address: string): void {
-        if (this.state === MasterState.Connecting) {
+        if (this.connectionState === MasterConnectionState.Connecting) {
             this.emit("error", new Error("Cannot change master address while connecting."));
         }
-        if (this.state === MasterState.Connected) {
+        if (this.connectionState === MasterConnectionState.Connected) {
             this.emit("error", new Error("Cannot change master address while connected to master."));
         }
         this.address = address;
@@ -100,12 +91,12 @@ export class Master extends MasterEmitter implements ContentTransferer {
             return;
         }
 
-        if (this.state === MasterState.Connected || this.state === MasterState.Connecting) {
+        if (this.connectionState === MasterConnectionState.Connected || this.connectionState === MasterConnectionState.Connecting) {
             return;
         }
 
         this.canReconnect = true;
-        this.state = MasterState.Connecting;
+        this.connectionState = MasterConnectionState.Connecting;
         this.address = address;
 
         const msg = config.MSG ? config.MSG : randombytes(4).toString("hex");
@@ -128,27 +119,27 @@ export class Master extends MasterEmitter implements ContentTransferer {
             });
             this.getWire().once("error", err => {
                 logger.error("Could not connect to master", err);
-                this.state = MasterState.Connecting;
+                this.connectionState = MasterConnectionState.Connecting;
                 this.emit("error", err);
             });
 
             this.getWire()
                 .handshakeResult()
                 .then(info => {
-                    if (this.state !== MasterState.Connecting) {
+                    if (this.connectionState !== MasterConnectionState.Connecting) {
                         return;
                     }
                     this.registerEvents();
-                    this.state = MasterState.Connected;
+                    this.connectionState = MasterConnectionState.Connected;
                     process.nextTick(() => {
                         this.emit("connected", info);
                     });
                 })
                 .catch(info => {
-                    if (this.state !== MasterState.Connecting) {
+                    if (this.connectionState !== MasterConnectionState.Connecting) {
                         return;
                     }
-                    this.state = MasterState.Disconnected;
+                    this.connectionState = MasterConnectionState.Disconnected;
                 });
         };
 
@@ -264,7 +255,7 @@ export class Master extends MasterEmitter implements ContentTransferer {
     }
 
     private _onClosed(info: ClosedData): void {
-        this.state = MasterState.Disconnected;
+        this.connectionState = MasterConnectionState.Disconnected;
         logger.info("Connection with master closed", info);
         if (
             info.wasClean === false ||
@@ -296,14 +287,14 @@ export class Master extends MasterEmitter implements ContentTransferer {
     }
 
     public async close(): Promise<void> {
-        if (this.state === MasterState.Disconnected) {
+        if (this.connectionState === MasterConnectionState.Disconnected) {
             logger.warn("Node is not connected to master.");
             return;
         }
-        this.state = MasterState.Disconnected;
+        this.connectionState = MasterConnectionState.Disconnected;
 
         return new Promise<void>((resolve, reject) => {
-            if (this.state === MasterState.Connected) {
+            if (this.connectionState === MasterConnectionState.Connected) {
                 this.getWire().close(1000, "Normal disconnect.");
                 this._onClosed({
                     code: 100,
@@ -311,7 +302,7 @@ export class Master extends MasterEmitter implements ContentTransferer {
                     reason: "Normal disconnect."
                 });
                 resolve();
-            } else if (this.state === MasterState.Connecting) {
+            } else if (this.connectionState === MasterConnectionState.Connecting) {
                 this.on("connected", () => {
                     this.getWire().close(1000, "Normal disconnect.");
                     this._onClosed({
@@ -368,7 +359,7 @@ export class Master extends MasterEmitter implements ContentTransferer {
     }
 
     public isConnected(): boolean {
-        return this.state === MasterState.Connected;
+        return this.connectionState === MasterConnectionState.Connected;
     }
 
     public signedRequest(params: SignedRequest): void {

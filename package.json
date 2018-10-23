@@ -3,7 +3,7 @@
         "tag": "rc"
     },
     "name": "@noia-network/node",
-    "version": "1.0.0-rc.6",
+    "version": "1.0.0-rc.7",
     "description": "NOIA Node core.",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -39,7 +39,7 @@
     },
     "dependencies": {
         "@noia-network/governance": "^0.1.2",
-        "@noia-network/node-contents-client": "^1.0.0-rc.2",
+        "@noia-network/node-contents-client": "^1.0.0-rc.4",
         "@noia-network/node-settings": "0.1.0-alpha.10",
         "@noia-network/protocol": "^1.0.1-rc.8",
         "@noia-network/webrtc-direct-server": "^1.0.1-rc.2",

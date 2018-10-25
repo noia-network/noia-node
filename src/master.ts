@@ -39,7 +39,8 @@ interface MasterEvents extends ContentTransfererEvents {
     seed: (data: ProtocolEvent<Seed>) => this;
     workOrder: (data: ProtocolEvent<WorkOrder>) => this;
     signedRequest: (data: ProtocolEvent<SignedRequest>) => this;
-    statistics: (data: ProtocolEvent<Statistics>) => this;
+    statistics: (data: Statistics) => this;
+    connectionStateChange: () => this;
 }
 
 const MasterEmitter: { new (): StrictEventEmitter<EventEmitter, MasterEvents> } = EventEmitter;
@@ -96,7 +97,7 @@ export class Master extends MasterEmitter implements ContentTransferer {
         }
 
         this.canReconnect = true;
-        this.connectionState = MasterConnectionState.Connecting;
+        this.changeConnectionState(MasterConnectionState.Connecting);
         this.address = address;
 
         const msg = config.MSG ? config.MSG : randombytes(4).toString("hex");
@@ -110,16 +111,16 @@ export class Master extends MasterEmitter implements ContentTransferer {
                 logger.info(
                     `Received statistics: downloaded=${info.data.downloaded}, uploaded=${info.data.uploaded}, online for ${
                         info.data.time.hours
-                    } hours, ${info.data.time.minutes} minues, ${info.data.time.seconds} second(s).`
+                    } hours, ${info.data.time.minutes} minutes, ${info.data.time.seconds} second(s).`
                 );
-                this.emit("statistics", info);
+                this.node.getStatistics().sync(info.data);
             });
             this.getWire().once("closed", info => {
                 this._onClosed(info);
             });
             this.getWire().once("error", err => {
                 logger.error("Could not connect to master", err);
-                this.connectionState = MasterConnectionState.Connecting;
+                this.changeConnectionState(MasterConnectionState.Connecting);
                 this.emit("error", err);
             });
 
@@ -130,7 +131,7 @@ export class Master extends MasterEmitter implements ContentTransferer {
                         return;
                     }
                     this.registerEvents();
-                    this.connectionState = MasterConnectionState.Connected;
+                    this.changeConnectionState(MasterConnectionState.Connected);
                     process.nextTick(() => {
                         this.emit("connected", info);
                     });
@@ -139,7 +140,7 @@ export class Master extends MasterEmitter implements ContentTransferer {
                     if (this.connectionState !== MasterConnectionState.Connecting) {
                         return;
                     }
-                    this.connectionState = MasterConnectionState.Disconnected;
+                    this.changeConnectionState(MasterConnectionState.Disconnected);
                 });
         };
 
@@ -255,7 +256,7 @@ export class Master extends MasterEmitter implements ContentTransferer {
     }
 
     private _onClosed(info: ClosedData): void {
-        this.connectionState = MasterConnectionState.Disconnected;
+        this.changeConnectionState(MasterConnectionState.Disconnected);
         logger.info("Connection with master closed", info);
         if (
             info.wasClean === false ||
@@ -291,7 +292,7 @@ export class Master extends MasterEmitter implements ContentTransferer {
             logger.warn("Node is not connected to master.");
             return;
         }
-        this.connectionState = MasterConnectionState.Disconnected;
+        this.changeConnectionState(MasterConnectionState.Disconnected);
 
         return new Promise<void>((resolve, reject) => {
             if (this.connectionState === MasterConnectionState.Connected) {
@@ -426,5 +427,12 @@ export class Master extends MasterEmitter implements ContentTransferer {
 
     public error(error: Error): void {
         this.emit("error", error);
+    }
+
+    private changeConnectionState(connectionState: MasterConnectionState): void {
+        if (connectionState !== this.connectionState) {
+            this.emit("connectionStateChange");
+        }
+        this.connectionState = connectionState;
     }
 }

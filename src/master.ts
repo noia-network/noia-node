@@ -40,7 +40,7 @@ interface MasterEvents extends ContentTransfererEvents {
     workOrder: (data: ProtocolEvent<WorkOrder>) => this;
     signedRequest: (data: ProtocolEvent<SignedRequest>) => this;
     statistics: (data: Statistics) => this;
-    connectionStateChange: () => this;
+    connectionStateChange: (connectionState: MasterConnectionState) => this;
 }
 
 const MasterEmitter: { new (): StrictEventEmitter<EventEmitter, MasterEvents> } = EventEmitter;
@@ -430,9 +430,11 @@ export class Master extends MasterEmitter implements ContentTransferer {
     }
 
     private changeConnectionState(connectionState: MasterConnectionState): void {
-        if (connectionState !== this.connectionState) {
-            this.emit("connectionStateChange");
+        if (connectionState === this.connectionState) {
+            return;
         }
+
         this.connectionState = connectionState;
+        this.emit("connectionStateChange", this.connectionState);
     }
 }

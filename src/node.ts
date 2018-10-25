@@ -1,4 +1,3 @@
-import * as path from "path";
 import EventEmitter from "events";
 import StrictEventEmitter from "strict-event-emitter-types";
 import { ContentsClient } from "@noia-network/node-contents-client";
@@ -12,6 +11,7 @@ import { NodeController } from "./node-controller";
 import { StorageSpace } from "./storage-space";
 import { Wallet } from "./wallet";
 import { WebSocketCloseEvent } from "./contracts";
+import { Statistics } from "./statistics";
 
 export type NodeInterface = "cli" | "gui" | "unspecified";
 
@@ -63,6 +63,10 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
      */
     private settings?: NodeSettings;
     /**
+     * Statistics.
+     */
+    private statistics?: Statistics;
+    /**
      * Storage space.
      */
     private storageSpace?: StorageSpace;
@@ -109,6 +113,9 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
 
         // Master.
         this.master = new Master(this);
+
+        // Statistics.
+        this.statistics = new Statistics(this);
 
         // Client sockets.
         this.clientSockets = new ClientSockets(this);
@@ -361,6 +368,16 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
             throw new Error("Node master is not initialized.");
         }
         return this.master;
+    }
+
+    /**
+     * Get statistics.
+     */
+    public getStatistics(): Statistics {
+        if (this.statistics == null) {
+            throw new Error("Node statistics is not initialized.");
+        }
+        return this.statistics;
     }
 
     /**

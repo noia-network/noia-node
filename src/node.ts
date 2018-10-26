@@ -127,6 +127,7 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
 
         // Storage space.
         this.storageSpace = new StorageSpace(storageDir, this.settings.getScope("storage").get("size"));
+        await this.storageSpace.ensureFilesAndDirectories();
 
         // Wallet.
         if (this.settings.getScope("blockchain").get("isEnabled")) {
@@ -152,7 +153,7 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
         setInterval(async () => {
             const bandwidthData = await Helpers.getSpeedTest();
             if (this.master != null) {
-                this.master.bandwidth(bandwidthData);
+                this.master.bandwidth(bandwidthData, true);
             }
         }, 5 * 60 * 1000);
 
@@ -231,7 +232,7 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
      * Start node.
      */
     public async start(): Promise<void> {
-        this.getContentsClient().start();
+        await this.getContentsClient().start();
         await this.getClientSockets().listen();
 
         const blockchainIsEnabled = this.getSettings()

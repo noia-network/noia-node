@@ -345,7 +345,14 @@ export class Master extends MasterEmitter implements ContentTransferer {
         }
     }
 
-    public bandwidth(params: BandwidthData): void {
+    /**
+     * Send bandwidth statistics. Since bandwidth collection can take time and wire can be gone, make it skippable if not ensured.
+     */
+    public bandwidth(params: BandwidthData, skippable = false): void {
+        if (skippable && (this.wire == null || this.wire.isReady() === false)) {
+            return;
+        }
+
         if (this.getWire().isReady()) {
             logger.info(`Notifying master on changed bandwidth:`, params);
             this.getWire().bandwidthData(params);

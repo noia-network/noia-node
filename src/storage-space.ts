@@ -1,4 +1,4 @@
-import fs from "fs";
+import fs from "fs-extra";
 import path from "path";
 import rimraf from "rimraf";
 
@@ -19,6 +19,11 @@ export class StorageSpace {
         logger.info(`Storage dir=${storageDir}, allocated=${allocated}.`);
         this.storageDir = path.resolve(storageDir);
         this.metadataPath = path.join(storageDir, "metadata.json");
+    }
+
+    public async ensureFilesAndDirectories(): Promise<void> {
+        await fs.ensureDir(this.storageDir);
+        await fs.ensureFile(this.metadataPath);
     }
 
     public total(): number {

@@ -174,6 +174,7 @@ declare module "wrtc" {
     export interface Description {}
 
     export interface DataChannel extends EventTarget {
+        readyState: "connecting" | "open" | "closing" | "closed";
         onmessage: (event: MessageEvent) => void;
         onopen: (event: Event) => void;
         send: (data: any) => void;

@@ -254,6 +254,15 @@ export class ClientSocketWrtc extends (EventEmitter as { new (): ClientSocketEmi
     }
 
     private countChannels(channels: { [name: string]: Channel }): number {
-        return Object.keys(channels).length;
+        let count = 0;
+        for (const key in channels) {
+            if (channels.hasOwnProperty(key)) {
+                const channel = channels[key];
+                if (channel.dc != null && channel.dc.readyState === "open") {
+                    count += 1;
+                }
+            }
+        }
+        return count;
     }
 }

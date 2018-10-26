@@ -1,7 +1,7 @@
 import * as protobuf from "protobufjs";
 import EventEmitter from "events";
 import StrictEventEmitter from "strict-event-emitter-types";
-import { WebRtcDirect, Channel, Statuses } from "@noia-network/webrtc-direct-server";
+import { WebRtcDirect, Channel } from "@noia-network/webrtc-direct-server";
 import { Wire } from "@noia-network/protocol";
 // TODO: Export.
 import { Content } from "@noia-network/node-contents-client/dist/content";

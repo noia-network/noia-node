@@ -23,7 +23,9 @@ export class StorageSpace {
 
     public async ensureFilesAndDirectories(): Promise<void> {
         await fs.ensureDir(this.storageDir);
-        await fs.ensureFile(this.metadataPath);
+        if (!(await fs.pathExists(this.metadataPath))) {
+            await fs.writeJson(this.metadataPath, {});
+        }
     }
 
     public total(): number {

@@ -41,6 +41,7 @@ interface MasterEvents extends ContentTransfererEvents {
     signedRequest: (data: ProtocolEvent<SignedRequest>) => this;
     statistics: (data: Statistics) => this;
     connectionStateChange: (connectionState: MasterConnectionState) => this;
+    reconnecting: (seconds: number) => this;
 }
 
 const MasterEmitter: { new (): StrictEventEmitter<EventEmitter, MasterEvents> } = EventEmitter;
@@ -59,6 +60,7 @@ export class Master extends MasterEmitter implements ContentTransferer {
     public address?: string | WebSocket;
     public jobPostDesc?: JobPostDescription;
     public canReconnect: boolean = false;
+    public isReconnecting: boolean = false;
 
     public setAddress(address: string): void {
         if (this.connectionState === MasterConnectionState.Connecting) {
@@ -70,7 +72,7 @@ export class Master extends MasterEmitter implements ContentTransferer {
         this.address = address;
     }
 
-    public reconnect(): void {
+    public reconnect(timeoutSec: number = 0): void {
         if (!this.address) {
             logger.warn("...address unspecified, reconnect aborted");
             return;
@@ -80,7 +82,17 @@ export class Master extends MasterEmitter implements ContentTransferer {
             return;
         }
 
-        this.connect(
+        logger.info(`Reconnecting to master in ${timeoutSec} second(s)...`);
+        this.emit("reconnecting", timeoutSec);
+        this.isReconnecting = true;
+        setTimeout(
+            (address, jobPostDesc) => {
+                this.connect(
+                    address,
+                    jobPostDesc
+                );
+            },
+            timeoutSec * 1000,
             this.address,
             this.jobPostDesc
         );
@@ -96,6 +108,7 @@ export class Master extends MasterEmitter implements ContentTransferer {
             return;
         }
 
+        this.isReconnecting = false;
         this.canReconnect = true;
         this.changeConnectionState(MasterConnectionState.Connecting);
         this.address = address;

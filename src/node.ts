@@ -33,6 +33,7 @@ interface NodeEvents {
     stopped: (this: Node) => this;
     destroyed: (this: Node) => this;
     warning: (this: Node, msg: string) => this;
+    restarting: (this: Node, seconds: number) => this;
     error: (this: Node, error: Error) => this;
 }
 type NodeEmitter = StrictEventEmitter<EventEmitter, NodeEvents>;
@@ -74,6 +75,10 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
      * Wallet.
      */
     private wallet?: Wallet;
+    /**
+     * Used to track how long Node should wait before trying to reconnect.
+     */
+    private timesReconnected: number = 0;
 
     /**
      * State
@@ -159,6 +164,7 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
 
         // Handle connection to master.
         this.getMaster().on("connected", async () => {
+            this.timesReconnected = 0;
             this.logger.info(`Connected to master, master-address=${this.getMaster().address}.`);
             contentsClientSeedingListener(this.getContentsClient().getInfoHashes());
             this.getContentsClient().addListener("seeding", contentsClientSeedingListener);
@@ -195,8 +201,17 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
                 this.getWallet().cleanup();
                 await this.restart(15);
             } else {
-                this.stop();
-                this.emitError(err);
+                if (this.getSettings().get("autoReconnect")) {
+                    if (this.getMaster().isReconnecting) {
+                        return;
+                    }
+                    const seconds = Math.pow(2, this.timesReconnected);
+                    this.timesReconnected++;
+                    this.getMaster().reconnect(seconds);
+                } else {
+                    this.stop();
+                    this.emitError(err);
+                }
             }
         });
         this.getMaster().on("closed", closeEvent => {
@@ -300,6 +315,7 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
             logger.warn("Restart is already in progress..");
             return;
         }
+        this.emit("restarting", timeoutSec);
         this.isRestarting = true;
         this.logger.warn(`Restarting node in ${timeoutSec} seconds...`);
         setTimeout(async () => {

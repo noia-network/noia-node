@@ -127,12 +127,12 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
 
         const storageDir = Helpers.getStorageDir(this.getSettings());
 
-        // Contents client.
-        this.contentsClient = new ContentsClient(this.getMaster(), storageDir);
-
         // Storage space.
         this.storageSpace = new StorageSpace(storageDir, this.settings.getScope("storage").get("size"));
         await this.storageSpace.ensureFilesAndDirectories();
+
+        // Contents client.
+        this.contentsClient = new ContentsClient(this.getMaster(), storageDir, await this.getStorageSpace().stats());
 
         // Wallet.
         if (this.settings.getScope("blockchain").get("isEnabled")) {

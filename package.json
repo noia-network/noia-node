@@ -3,7 +3,7 @@
         "tag": "rc"
     },
     "name": "@noia-network/node",
-    "version": "1.0.0-rc.17",
+    "version": "1.0.0-rc.18",
     "description": "NOIA Node core.",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -36,14 +36,14 @@
         "tslint": "^5.11.0",
         "tslint-language-service": "^0.9.9",
         "typescript": "^3.0.0",
-        "@noia-network/node-settings": "0.1.0-alpha.13"
+        "@noia-network/node-settings": "0.1.0-alpha.15"
     },
     "peerDependencies": {
-        "@noia-network/node-settings": "^0.1.0-alpha.13"
+        "@noia-network/node-settings": "^0.1.0-alpha.15"
     },
     "dependencies": {
         "@noia-network/governance": "^0.1.2",
-        "@noia-network/node-contents-client": "^1.0.0-rc.4",
+        "@noia-network/node-contents-client": "^1.0.0-rc.5",
         "@noia-network/protocol": "^1.0.1-rc.9",
         "@noia-network/webrtc-direct-server": "^1.0.1-rc.2",
         "@types/bip39": "^2.4.0",

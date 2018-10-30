@@ -3,7 +3,7 @@
         "tag": "rc"
     },
     "name": "@noia-network/node",
-    "version": "1.0.0-rc.16",
+    "version": "1.0.0-rc.17",
     "description": "NOIA Node core.",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",

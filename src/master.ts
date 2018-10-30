@@ -270,12 +270,15 @@ export class Master extends MasterEmitter implements ContentTransferer {
 
     private _onClosed(info: ClosedData): void {
         this.changeConnectionState(MasterConnectionState.Disconnected);
+        if (info.reason === "") {
+            info.reason = Helpers.webSocketCloseCodeToReason(info.code);
+        }
         logger.info("Connection with master closed", info);
         if (
             info.wasClean === false ||
             (info.code !== WebSocketCloseEvent.NormalClosure && info.code !== WebSocketCloseEvent.ServiceRestarting)
         ) {
-            this.emit("error", new Error(info.code.toString()));
+            this.emit("error", new Error(info.reason));
         } else {
             this.emit("closed", info);
         }

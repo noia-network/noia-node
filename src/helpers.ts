@@ -65,4 +65,20 @@ export namespace Helpers {
             });
         });
     }
+
+    export function webSocketCloseCodeToReason(code: number | string): string {
+        // Source: https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent.
+        switch (code) {
+            case 1000:
+                return "Normal closure.";
+            case 1006:
+                return "Abnormal closure.";
+            case 1008:
+                return "Protocol error.";
+            case 1012:
+                return "Service is restarting.";
+            default:
+                return `Unspecified connection closure reason, code=${code}.`;
+        }
+    }
 }

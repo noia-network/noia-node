@@ -401,12 +401,14 @@ export class Master extends MasterEmitter implements ContentTransferer {
                 logger.info(`Master sent work-order-address=${info.data.address}.`);
                 this.emit("workOrder", info);
             });
-            this.getWire().on("clear", info => {
+            this.getWire().on("clear", async info => {
                 this.emit("clear", info);
                 // Clear everything if info resolves to false.
                 const infoHashes: string[] =
                     info.data.infoHashes.length === 0 ? this.node.getContentsClient().getInfoHashes() : info.data.infoHashes;
-                infoHashes.forEach(infoHash => this.node.getContentsClient().remove(infoHash));
+                for (const infoHash of infoHashes) {
+                    await this.node.getContentsClient().remove(infoHash);
+                }
                 this.getWire().cleared(infoHashes);
             });
             this.getWire().on("seed", info => {

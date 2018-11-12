@@ -411,7 +411,7 @@ export class Master extends MasterEmitter implements ContentTransferer {
                 }
                 this.getWire().cleared(infoHashes);
             });
-            this.getWire().on("seed", info => {
+            this.getWire().on("seed", async info => {
                 this.emit("seed", info);
                 const metadata = info.data.metadata;
                 if (this.node) {
@@ -420,7 +420,7 @@ export class Master extends MasterEmitter implements ContentTransferer {
                     }
                     logger.info(`metadata add: infoHash = ${metadata.infoHash}, pieces = ${metadata.pieces}`);
                     // TODO: move log to metadata store
-                    this.node.getContentsClient().add(metadata);
+                    await this.node.getContentsClient().add(metadata);
                 } else {
                     logger.info("Node or contents client is undefined.");
                 }

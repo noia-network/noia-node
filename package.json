@@ -1,9 +1,6 @@
 {
-    "publishConfig": {
-        "tag": "rc"
-    },
     "name": "@noia-network/node",
-    "version": "1.0.0-rc.21",
+    "version": "1.0.0",
     "description": "NOIA Node core.",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -36,10 +33,10 @@
         "tslint": "^5.11.0",
         "tslint-language-service": "^0.9.9",
         "typescript": "^3.0.0",
-        "@noia-network/node-settings": "1.0.0"
+        "@noia-network/node-settings": "^1.0.1"
     },
     "peerDependencies": {
-        "@noia-network/node-settings": "^1.0.0"
+        "@noia-network/node-settings": "^1.0.1"
     },
     "dependencies": {
         "@noia-network/governance": "^0.1.2",

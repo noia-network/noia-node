@@ -6,7 +6,7 @@ import { NodeSettings } from "@noia-network/node-settings";
 import { ClientSockets } from "./client-sockets";
 import { Helpers } from "./helpers";
 import { Logger, logger } from "./logger";
-import { Master } from "./master";
+import { Master, MasterConnectionState } from "./master";
 import { NodeController } from "./node-controller";
 import { StorageSpace } from "./storage-space";
 import { Wallet } from "./wallet";
@@ -156,11 +156,13 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
 
         // Register bandwidth reporting in 5 minutes interval.
         setInterval(async () => {
-            const bandwidthData = await Helpers.getSpeedTest();
-            if (this.master != null) {
-                this.master.bandwidth(bandwidthData, true);
+            if (this.master != null && this.master.connectionState === MasterConnectionState.Connected) {
+                const bandwidthData = await Helpers.getSpeedTest();
+                if (this.master != null) {
+                    this.master.bandwidth(bandwidthData, true);
+                }
             }
-        }, 5 * 60 * 1000);
+        }, 60 * 60 * 1000);
 
         // Handle connection to master.
         this.getMaster().on("connected", async () => {

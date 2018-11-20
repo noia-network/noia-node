@@ -160,7 +160,7 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
             if (this.master != null) {
                 this.master.bandwidth(bandwidthData, true);
             }
-        }, 5 * 60 * 1000);
+        }, 60 * 60 * 1000);
 
         // Handle connection to master.
         this.getMaster().on("connected", async () => {

@@ -17,7 +17,7 @@ export namespace Helpers {
     export async function getSpeedTest(): Promise<Data> {
         return new Promise<Data>((resolve, reject) => {
             const test = speedTest({
-                maxTime: 20000
+                maxTime: 5 * 1000
             });
             test.on("data", data => {
                 resolve(data);

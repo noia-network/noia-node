@@ -132,7 +132,7 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
         await this.storageSpace.ensureFilesAndDirectories();
 
         // Contents client.
-        this.contentsClient = new ContentsClient(this.getMaster(), storageDir, await this.getStorageSpace().stats.bind(this.storageSpace));
+        this.contentsClient = new ContentsClient(this.getMaster(), storageDir, this.getStorageSpace().stats.bind(this.storageSpace));
 
         // Wallet.
         if (this.settings.getScope("blockchain").get("isEnabled")) {
@@ -176,6 +176,8 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
                     .getScope("blockchain")
                     .get("isEnabled")
             ) {
+                // TODO: Investigate types compatibility.
+                // @ts-ignore
                 this.getMaster().addListener("workOrder", this.getWallet().onWorkOrder.bind(this.getWallet()));
                 this.getMaster().addListener("signedRequest", async signedRequest => {
                     try {

@@ -62,6 +62,14 @@ export class Master extends MasterEmitter implements ContentTransferer {
     public canReconnect: boolean = false;
     public isReconnecting: boolean = false;
 
+    public getExternalIp(): string | undefined {
+        return this.node
+            .getSettings()
+            .getScope("sockets")
+            .getScope("wrtc")
+            .get("dataIp");
+    }
+
     public setAddress(address: string): void {
         if (this.connectionState === MasterConnectionState.Connecting) {
             this.emit("error", new Error("Cannot change master address while connecting."));
@@ -98,7 +106,7 @@ export class Master extends MasterEmitter implements ContentTransferer {
         );
     }
 
-    public async connect(address: string | WebSocket | null, jobPostDesc?: JobPostDescription): Promise<void> {
+    public async connect(address: string | WebSocket | null | undefined, jobPostDesc?: JobPostDescription): Promise<void> {
         if (address == null) {
             logger.error(`Master address=${address} is invalid. Specify master address in settings if connecting directly.`);
             return;
@@ -288,7 +296,7 @@ export class Master extends MasterEmitter implements ContentTransferer {
         this.getWire().requested(missingPiece, infoHash);
     }
 
-    public disconnect(doRestart = false): void {
+    public async disconnect(doRestart = false): Promise<void> {
         this.canReconnect = false;
         if (this.wire == null) {
             return;

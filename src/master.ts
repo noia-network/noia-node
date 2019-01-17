@@ -34,7 +34,7 @@ interface MasterEvents extends ContentTransfererEvents {
     clear: (data: ProtocolEvent<Clear>) => this;
     closed: (data: ClosedData | undefined) => this;
     connected: (data: ProtocolEvent<Handshake>) => this;
-    error: (error: Error) => this;
+    error: (error: Error, timeoutSec?: number) => this;
     response: (data: ProtocolEvent<Response>) => this;
     seed: (data: ProtocolEvent<Seed>) => this;
     workOrder: (data: ProtocolEvent<WorkOrder>) => this;
@@ -286,7 +286,7 @@ export class Master extends MasterEmitter implements ContentTransferer {
             info.wasClean === false ||
             (info.code !== WebSocketCloseEvent.NormalClosure && info.code !== WebSocketCloseEvent.ServiceRestarting)
         ) {
-            this.emit("error", new Error(info.reason));
+            this.emit("error", new Error(info.reason), info.code === 1002 ? 4 * 60 : undefined);
         } else {
             this.emit("closed", info);
         }

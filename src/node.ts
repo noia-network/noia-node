@@ -193,7 +193,7 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
             }
         });
         // Remove some registered listeners and restart or stop node.
-        this.getMaster().on("error", async err => {
+        this.getMaster().on("error", async (err, timeoutSec) => {
             this.getMaster().removeAllListeners("workOrder");
             this.getMaster().removeAllListeners("signedRequest");
             this.getContentsClient().removeListener("seeding", contentsClientSeedingListener);
@@ -209,7 +209,10 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
                     if (this.getMaster().isReconnecting) {
                         return;
                     }
-                    const seconds = Math.pow(2, this.timesReconnected);
+                    let seconds = Math.pow(2, this.timesReconnected);
+                    if (timeoutSec != null) {
+                        seconds = timeoutSec;
+                    }
                     this.timesReconnected++;
                     this.getMaster().reconnect(seconds);
                 } else {

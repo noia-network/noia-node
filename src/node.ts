@@ -1,3 +1,4 @@
+import * as os from "os";
 import EventEmitter from "events";
 import StrictEventEmitter from "strict-event-emitter-types";
 import { ContentsClient } from "@noia-network/node-contents-client";
@@ -150,7 +151,15 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
             this.getStorageSpace()
                 .stats()
                 .then(info => {
-                    this.getMaster().storage(info);
+                    this.getMaster().storage({
+                        available: info.available,
+                        total: info.total,
+                        used: info.used,
+                        arch: os.arch(),
+                        release: os.release(),
+                        platform: os.platform(),
+                        deviceType: os.type()
+                    });
                 });
         };
 

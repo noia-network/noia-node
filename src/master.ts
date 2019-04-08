@@ -286,7 +286,7 @@ export class Master extends MasterEmitter implements ContentTransferer {
             info.wasClean === false ||
             (info.code !== WebSocketCloseEvent.NormalClosure && info.code !== WebSocketCloseEvent.ServiceRestarting)
         ) {
-            this.emit("error", new Error(info.reason), info.code === 1002 ? 4 * 60 : undefined);
+            this.emit("error", new Error(info.reason), info.code === 1002 ? 60 : undefined);
         } else {
             this.emit("closed", info);
         }

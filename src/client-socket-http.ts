@@ -74,7 +74,6 @@ export class ClientSocketHttp extends (EventEmitter as { new (): ClientSocketEmi
                 const client = `client-ip=${info.ip}`;
                 const resource = `resource=${info.resource.infoHash}`;
                 const url = `url=${info.resource.url}`;
-                const size = `size=${info.resource.size.toFixed(4)}`;
                 const sizeMB = `size=${info.resource.size.toFixed(4 / 1000 / 1000)}`;
                 logger.info(`HTTP sent to ${client} ${resource} ${sizeMB} ${url}`);
                 this.emit("resourceSent", groups[key]);

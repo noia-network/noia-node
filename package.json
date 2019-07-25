@@ -1,6 +1,9 @@
 {
     "name": "@noia-network/node",
-    "version": "1.1.5",
+    "version": "1.2.1-rc",
+    "publishConfig": {
+        "tag": "rc"
+    },
     "description": "NOIA Node core.",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -39,9 +42,8 @@
         "@noia-network/node-settings": "^1.0.1"
     },
     "dependencies": {
-        "@noia-network/governance": "^0.1.2",
         "@noia-network/node-contents-client": "^2.0.0",
-        "@noia-network/protocol": "^1.1.1",
+        "@noia-network/protocol": "^1.2.1",
         "@noia-network/webrtc-direct-server": "^1.0.4",
         "@types/bip39": "^2.4.0",
         "@types/dotenv": "^4.0.3",
@@ -50,6 +52,7 @@
         "@types/mime-types": "^2.1.0",
         "@types/node": "^9.6.12",
         "@types/node-fetch": "^1.6.8",
+        "@types/ping": "^0.2.0",
         "@types/request": "^2.47.1",
         "@types/rimraf": "^2.0.2",
         "@types/ws": "^6.0.0",
@@ -65,13 +68,16 @@
         "mime-types": "^2.1.18",
         "nat-pmp": "^1.0.0",
         "node-fetch": "^2.0.0",
+        "ping": "^0.2.2",
         "protobufjs": "^6.8.8",
+        "public-ip": "^3.1.0",
         "randombytes": "^2.0.6",
         "request": "^2.85.0",
         "rimraf": "^2.6.2",
         "speedtest-net": "^1.4.3",
         "strict-event-emitter-types": "^2.0.0",
         "swagger-ui-express": "^3.0.8",
+        "systeminformation": "^4.11.4",
         "tslib": "^1.9.2",
         "winston": "^2.4.1",
         "ws": "^6.0.0"

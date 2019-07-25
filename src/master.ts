@@ -11,7 +11,8 @@ import {
     SignedRequest,
     StorageData,
     BandwidthData,
-    Statistics
+    Statistics,
+    NetworkInterfaces
 } from "@noia-network/protocol";
 import { ContentTransferer, ContentTransfererEvents } from "@noia-network/node-contents-client";
 import { ProtocolEvent, Handshake, ClosedData, Clear, Seed, Response, NodeMetadata } from "@noia-network/protocol";
@@ -19,7 +20,7 @@ import { ProtocolEvent, Handshake, ClosedData, Clear, Seed, Response, NodeMetada
 import { Helpers } from "./helpers";
 import { Node } from "./node";
 import { logger } from "./logger";
-import { JobPostDescription } from "./wallet";
+// import { JobPostDescription } from "./wallet";
 import { WebSocketCloseEvent } from "./contracts";
 
 const config = Helpers.getConfig();
@@ -58,7 +59,7 @@ export class Master extends MasterEmitter implements ContentTransferer {
      */
     public connectionState: MasterConnectionState = MasterConnectionState.Disconnected;
     public address?: string | WebSocket;
-    public jobPostDesc?: JobPostDescription;
+    public jobPostDesc?: any;
     public canReconnect: boolean = false;
     public isReconnecting: boolean = false;
 
@@ -95,10 +96,7 @@ export class Master extends MasterEmitter implements ContentTransferer {
         this.isReconnecting = true;
         setTimeout(
             (address, jobPostDesc) => {
-                this.connect(
-                    address,
-                    jobPostDesc
-                );
+                this.connect(address, jobPostDesc);
             },
             timeoutSec * 1000,
             this.address,
@@ -106,7 +104,7 @@ export class Master extends MasterEmitter implements ContentTransferer {
         );
     }
 
-    public async connect(address: string | WebSocket | null | undefined, jobPostDesc?: JobPostDescription): Promise<void> {
+    public async connect(address: string | WebSocket | null | undefined, jobPostDesc?: any): Promise<void> {
         if (address == null) {
             logger.error(`Master address=${address} is invalid. Specify master address in settings if connecting directly.`);
             return;
@@ -130,9 +128,8 @@ export class Master extends MasterEmitter implements ContentTransferer {
             });
             this.getWire().on("statistics", info => {
                 logger.info(
-                    `Received statistics: downloaded=${info.data.downloaded}, uploaded=${info.data.uploaded}, online for ${
-                        info.data.time.hours
-                    } hours, ${info.data.time.minutes} minutes, ${info.data.time.seconds} second(s).`
+                    // tslint:disable-next-line:max-line-length
+                    `Received statistics: downloaded=${info.data.downloaded}, uploaded=${info.data.uploaded}, online for ${info.data.time.hours} hours, ${info.data.time.minutes} minutes, ${info.data.time.seconds} second(s).`
                 );
                 this.node.getStatistics().sync(info.data);
             });
@@ -164,7 +161,6 @@ export class Master extends MasterEmitter implements ContentTransferer {
                     this.changeConnectionState(MasterConnectionState.Disconnected);
                 });
         };
-
         const isSsl = this.node
             .getSettings()
             .getScope("ssl")
@@ -366,6 +362,13 @@ export class Master extends MasterEmitter implements ContentTransferer {
         if (this.getWire().isReady()) {
             logger.info(`Notifying master on changed storage:`, params);
             this.getWire().storageData(params);
+        }
+    }
+
+    public networkInfo(params: NetworkInterfaces): void {
+        if (this.getWire().isReady()) {
+            // logger.info(`Notifying master on changed networkInfo:`, params);
+            this.getWire().networkData(params);
         }
     }
 

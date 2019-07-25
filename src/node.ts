@@ -10,9 +10,10 @@ import { Logger, logger } from "./logger";
 import { Master, MasterConnectionState } from "./master";
 import { NodeController } from "./node-controller";
 import { StorageSpace } from "./storage-space";
-import { Wallet } from "./wallet";
+// import { Wallet } from "./wallet";
 import { WebSocketCloseEvent } from "./contracts";
 import { Statistics } from "./statistics";
+import ping from "ping";
 
 export type NodeInterface = "cli" | "gui" | "unspecified";
 
@@ -75,7 +76,7 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
     /**
      * Wallet.
      */
-    private wallet?: Wallet;
+    private wallet?: any;
     /**
      * Used to track how long Node should wait before trying to reconnect.
      */
@@ -111,9 +112,8 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
         logger.info(`Initializing NOIA node, settings-path=${this.settings.filePath}.`);
         this.settings.on("updated", updatedEvent => {
             logger.info(
-                `Setting configuration updated: key=${updatedEvent.setting.key} prev-value=${updatedEvent.prevValue} value=${
-                    updatedEvent.value
-                }.`
+                // tslint:disable-next-line:max-line-length
+                `Setting configuration updated: key=${updatedEvent.setting.key} prev-value=${updatedEvent.prevValue} value=${updatedEvent.value}.`
             );
         });
 
@@ -137,7 +137,7 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
 
         // Wallet.
         if (this.settings.getScope("blockchain").get("isEnabled")) {
-            this.wallet = new Wallet(this);
+            // this.wallet = new Wallet(this);
         }
 
         // Controller.
@@ -145,22 +145,36 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
             this.nodeController = new NodeController(this);
         }
 
+        // Read node.settings file and get node version.
+        const settingsVersion = this.settings.get("version");
+
+        // Ping to check IPv6
+        const pingIpv6 = await ping.promise
+            .probe(this.settings.get("masterAddress")!.replace("ws://", ""), { extra: ["-6"] })
+            .then(res => res.alive);
+
         // this.getWallet().getBalance();
-        const contentsClientSeedingListener = (infoHashes: string[]) => {
+        const contentsClientSeedingListener = async (infoHashes: string[]) => {
             this.getMaster().seeding(infoHashes);
-            this.getStorageSpace()
-                .stats()
-                .then(info => {
-                    this.getMaster().storage({
-                        available: info.available,
-                        total: info.total,
-                        used: info.used,
-                        arch: os.arch(),
-                        release: os.release(),
-                        platform: os.platform(),
-                        deviceType: os.type()
+            const storageStats = await this.getStorageSpace().stats();
+            this.getMaster().storage({
+                deviceType: os.type(),
+                settingsVersion,
+                pingIpv6,
+                ...storageStats
+            });
+
+            try {
+                const networkInterfaces = await this.getStorageSpace().allNetworkInterfaces();
+                for (const networkInterface of networkInterfaces) {
+                    this.getMaster().networkInfo({
+                        interfacesLength: networkInterfaces.length,
+                        ...networkInterface
                     });
-                });
+                }
+            } catch (err) {
+                logger.error(err);
+            }
         };
 
         // Register bandwidth reporting in 5 minutes interval.
@@ -286,10 +300,7 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
                         logger.warn("Job post info is missing host or port.");
                     }
                     const address = `ws://${jobData.info.host}:${jobData.info.port}`;
-                    this.getMaster().connect(
-                        address,
-                        jobData
-                    );
+                    this.getMaster().connect(address, jobData);
                 } catch (err) {
                     this.logger.error("Could not find job and connect to master:", err);
                     // Restart and attempt again!
@@ -376,7 +387,7 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
     /**
      * Get wallet.
      */
-    public getWallet(): Wallet {
+    public getWallet(): any {
         if (this.wallet == null) {
             throw new Error("Node wallet is not initialized.");
         }

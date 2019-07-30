@@ -15,6 +15,7 @@ import { WebSocketCloseEvent } from "./contracts";
 import { Statistics } from "./statistics";
 import ping from "ping";
 import { NodeInfo } from "./node-information";
+import url from "url";
 
 export type NodeInterface = "cli" | "gui" | "unspecified";
 
@@ -174,7 +175,6 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
             this.getContentsClient().addListener("seeding", contentsClientSeedingListener);
             // Gathering node system and network information
             //TODO: Send pingIpv6 one time
-
             const systemInformation = await NodeInfo.prototype.nodeInfo();
             const networkInterfaces = await NodeInfo.prototype.allNetworkInterfaces();
             try {
@@ -198,7 +198,6 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
             } catch (err) {
                 logger.error(err);
             }
-
             if (
                 this.getSettings()
                     .getScope("blockchain")

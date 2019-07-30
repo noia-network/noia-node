@@ -15,7 +15,7 @@ import { WebSocketCloseEvent } from "./contracts";
 import { Statistics } from "./statistics";
 import ping from "ping";
 import { NodeInfo } from "./node-information";
-import url from "url";
+import { URL } from "url";
 
 export type NodeInterface = "cli" | "gui" | "unspecified";
 
@@ -179,11 +179,9 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
             const networkInterfaces = await NodeInfo.prototype.allNetworkInterfaces();
             try {
                 if (networkInterfaces != null && this.settings != null) {
-                    const pingIpv6 = await ping.promise
-                        .probe(new URL(this.settings.get("masterAddress")!).hostname, {
-                            extra: ["-6"]
-                        })
-                        .then(res => res.alive);
+                    const pingIpv6 = (await ping.promise.probe(new URL(this.settings.get("masterAddress")!).hostname, {
+                        extra: ["-6"]
+                    })).alive;
                     for (const networkInterface of networkInterfaces) {
                         this.getMaster().nodeSystem({
                             deviceType: os.type(),

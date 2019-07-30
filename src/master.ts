@@ -12,7 +12,7 @@ import {
     StorageData,
     BandwidthData,
     Statistics,
-    NetworkInterfaces
+    NodeInfoData
 } from "@noia-network/protocol";
 import { ContentTransferer, ContentTransfererEvents } from "@noia-network/node-contents-client";
 import { ProtocolEvent, Handshake, ClosedData, Clear, Seed, Response, NodeMetadata } from "@noia-network/protocol";
@@ -141,7 +141,6 @@ export class Master extends MasterEmitter implements ContentTransferer {
                 this.changeConnectionState(MasterConnectionState.Connecting);
                 this.emit("error", err);
             });
-
             this.getWire()
                 .handshakeResult()
                 .then(info => {
@@ -268,7 +267,15 @@ export class Master extends MasterEmitter implements ContentTransferer {
                         resolve(true);
                     })
             );
+
             listeners();
+        }
+    }
+
+    public nodeSystem(params: NodeInfoData): void {
+        if (this.getWire().isReady()) {
+            // logger.info(`Notifying master on changed system information:`, params);
+            this.getWire().nodeSystemData(params);
         }
     }
 
@@ -362,13 +369,6 @@ export class Master extends MasterEmitter implements ContentTransferer {
         if (this.getWire().isReady()) {
             logger.info(`Notifying master on changed storage:`, params);
             this.getWire().storageData(params);
-        }
-    }
-
-    public networkInfo(params: NetworkInterfaces): void {
-        if (this.getWire().isReady()) {
-            // logger.info(`Notifying master on changed networkInfo:`, params);
-            this.getWire().networkData(params);
         }
     }
 

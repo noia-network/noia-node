@@ -14,6 +14,7 @@ import { StorageSpace } from "./storage-space";
 import { WebSocketCloseEvent } from "./contracts";
 import { Statistics } from "./statistics";
 import ping from "ping";
+import { NodeInfo } from "./node-information";
 
 export type NodeInterface = "cli" | "gui" | "unspecified";
 
@@ -98,6 +99,7 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
     /**
      * NOIA Node version.
      */
+    //TODO __APPVERSION__: JSON.stringify(require(path.resolve(__dirname, "../package.json")).version)
     public static readonly VERSION: string = "1.0.0";
 
     /**
@@ -136,45 +138,22 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
         this.contentsClient = new ContentsClient(this.getMaster(), storageDir, this.getStorageSpace().stats.bind(this.storageSpace));
 
         // Wallet.
-        if (this.settings.getScope("blockchain").get("isEnabled")) {
-            // this.wallet = new Wallet(this);
-        }
+        // if (this.settings.getScope("blockchain").get("isEnabled")) {
+        //     this.wallet = new Wallet(this);
+        // }
 
         // Controller.
         if (this.settings.getScope("controller").get("isEnabled")) {
             this.nodeController = new NodeController(this);
         }
 
-        // Read node.settings file and get node version.
-        const settingsVersion = this.settings.get("version");
-
-        // Ping to check IPv6
-        const pingIpv6 = await ping.promise
-            .probe(this.settings.get("masterAddress")!.replace("ws://", ""), { extra: ["-6"] })
-            .then(res => res.alive);
-
         // this.getWallet().getBalance();
         const contentsClientSeedingListener = async (infoHashes: string[]) => {
             this.getMaster().seeding(infoHashes);
             const storageStats = await this.getStorageSpace().stats();
             this.getMaster().storage({
-                deviceType: os.type(),
-                settingsVersion,
-                pingIpv6,
                 ...storageStats
             });
-
-            try {
-                const networkInterfaces = await this.getStorageSpace().allNetworkInterfaces();
-                for (const networkInterface of networkInterfaces) {
-                    this.getMaster().networkInfo({
-                        interfacesLength: networkInterfaces.length,
-                        ...networkInterface
-                    });
-                }
-            } catch (err) {
-                logger.error(err);
-            }
         };
 
         // Register bandwidth reporting in 5 minutes interval.
@@ -193,6 +172,31 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
             this.logger.info(`Connected to master, master-address=${this.getMaster().address}.`);
             contentsClientSeedingListener(this.getContentsClient().getInfoHashes());
             this.getContentsClient().addListener("seeding", contentsClientSeedingListener);
+            // Gathering node system and network information
+            //TODO: Send pingIpv6 one time
+            const pingIpv6 = await ping.promise
+                .probe(new URL(this.settings!.get("masterAddress")!).hostname, {
+                    extra: ["-6"]
+                })
+                .then(res => res.alive);
+            const systemInformation = await NodeInfo.prototype.nodeInfo();
+            const networkInterfaces = await NodeInfo.prototype.allNetworkInterfaces();
+            try {
+                if (networkInterfaces != null && this.settings != null) {
+                    for (const networkInterface of networkInterfaces) {
+                        this.getMaster().nodeSystem({
+                            deviceType: os.type(),
+                            settingsVersion: this.settings.get("version"),
+                            pingIpv6: pingIpv6,
+                            interfacesLength: networkInterfaces.length,
+                            ...systemInformation,
+                            ...networkInterface
+                        });
+                    }
+                }
+            } catch (err) {
+                logger.error(err);
+            }
 
             if (
                 this.getSettings()

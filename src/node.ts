@@ -174,15 +174,16 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
             this.getContentsClient().addListener("seeding", contentsClientSeedingListener);
             // Gathering node system and network information
             //TODO: Send pingIpv6 one time
-            const pingIpv6 = await ping.promise
-                .probe(new URL(this.settings!.get("masterAddress")!).hostname, {
-                    extra: ["-6"]
-                })
-                .then(res => res.alive);
+
             const systemInformation = await NodeInfo.prototype.nodeInfo();
             const networkInterfaces = await NodeInfo.prototype.allNetworkInterfaces();
             try {
                 if (networkInterfaces != null && this.settings != null) {
+                    const pingIpv6 = await ping.promise
+                        .probe(new URL(this.settings.get("masterAddress")!).hostname, {
+                            extra: ["-6"]
+                        })
+                        .then(res => res.alive);
                     for (const networkInterface of networkInterfaces) {
                         this.getMaster().nodeSystem({
                             deviceType: os.type(),

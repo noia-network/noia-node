@@ -83,7 +83,6 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
      * Used to track how long Node should wait before trying to reconnect.
      */
     private timesReconnected: number = 0;
-
     /**
      * State
      */
@@ -96,7 +95,6 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
      * Node controller.
      */
     public nodeController: undefined | NodeController;
-
     /**
      * NOIA Node version.
      */
@@ -180,7 +178,8 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
             try {
                 if (networkInterfaces != null && this.settings != null) {
                     const pingIpv6 = (await ping.promise.probe(new URL(this.settings.get("masterAddress")!).hostname, {
-                        extra: ["-6"]
+                        extra: ["-6"],
+                        min_reply: 1
                     })).alive;
                     for (const networkInterface of networkInterfaces) {
                         this.getMaster().nodeSystem({

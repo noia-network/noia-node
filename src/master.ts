@@ -12,16 +12,26 @@ import {
     StorageData,
     BandwidthData,
     Statistics,
-    NodeInfoData
+    NodeInfoData,
+    ProtocolEvent,
+    Handshake,
+    ClosedData,
+    Clear,
+    Seed,
+    Response,
+    NodeMetadata,
+    PingData,
+    NodesFromMaster
 } from "@noia-network/protocol";
 import { ContentTransferer, ContentTransfererEvents } from "@noia-network/node-contents-client";
-import { ProtocolEvent, Handshake, ClosedData, Clear, Seed, Response, NodeMetadata } from "@noia-network/protocol";
 
 import { Helpers } from "./helpers";
 import { Node } from "./node";
 import { logger } from "./logger";
 // import { JobPostDescription } from "./wallet";
 import { WebSocketCloseEvent } from "./contracts";
+import tcpp from "tcp-ping";
+import { NodeInfo } from "./node-information";
 
 const config = Helpers.getConfig();
 
@@ -43,6 +53,7 @@ interface MasterEvents extends ContentTransfererEvents {
     statistics: (data: Statistics) => this;
     connectionStateChange: (connectionState: MasterConnectionState) => this;
     reconnecting: (seconds: number) => this;
+    nodesFromMaster: (data: NodesFromMaster) => this;
 }
 
 const MasterEmitter: { new (): StrictEventEmitter<EventEmitter, MasterEvents> } = EventEmitter;
@@ -135,6 +146,39 @@ export class Master extends MasterEmitter implements ContentTransferer {
             });
             this.getWire().once("closed", info => {
                 this._onClosed(info);
+            });
+            this.getWire().on("nodesFromMaster", async info => {
+                // logger.info(`Received nodes data: node-ipv4=${info.data.ipv4}, node-ipv6=${info.data.ipv6}.`);
+
+                const nodeInfo = new NodeInfo();
+
+                const [externalIpv4, externalIpv6] = await Promise.all([nodeInfo.externalIpv4(), nodeInfo.externalIpv6()]);
+
+                if (info.data.ipv4 === externalIpv4 || info.data.ipv6 === externalIpv6) {
+                    return;
+                } else {
+                    for (const host of [info.data.ipv4, info.data.ipv6]) {
+                        if (host !== undefined && host !== "") {
+                            tcpp.ping({ address: host, attempts: 10, port: info.data.port ? info.data.port : 80 }, (err: any, res: any) => {
+                                try {
+                                    // ping time
+                                    const sum = res.results.reduce((acc: number, curr: { time: number }) => acc + curr.time, 0);
+                                    const avgTime = sum / res.results.length;
+
+                                    this.node.getMaster().ping({
+                                        host: host,
+                                        time: Math.round(avgTime * 1e2) / 1e2,
+                                        min: res.min.toFixed(4),
+                                        max: res.max.toFixed(4),
+                                        avg: res.avg.toFixed(4)
+                                    });
+                                } catch (err) {
+                                    return;
+                                }
+                            });
+                        }
+                    }
+                }
             });
             this.getWire().once("error", err => {
                 logger.error("Could not connect to master", err);
@@ -267,7 +311,6 @@ export class Master extends MasterEmitter implements ContentTransferer {
                         resolve(true);
                     })
             );
-
             listeners();
         }
     }
@@ -276,6 +319,13 @@ export class Master extends MasterEmitter implements ContentTransferer {
         if (this.getWire().isReady()) {
             // logger.info(`Notifying master on changed system information:`, params);
             this.getWire().nodeSystemData(params);
+        }
+    }
+
+    public ping(params: PingData): void {
+        if (this.getWire().isReady()) {
+            // logger.info(`Ping:`, params);
+            this.getWire().pingData(params);
         }
     }
 

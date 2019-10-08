@@ -1,6 +1,9 @@
 {
     "name": "@noia-network/node",
-    "version": "1.2.2",
+    "version": "1.2.3-rc",
+    "publishConfig": {
+        "tag": "rc"
+    },
     "description": "NOIA Node core.",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -52,8 +55,8 @@
         "@types/ping": "^0.2.0",
         "@types/request": "^2.47.1",
         "@types/rimraf": "^2.0.2",
-        "@types/ws": "^6.0.0",
         "@types/tcp-ping": "^0.1.0",
+        "@types/ws": "^6.0.0",
         "bip39": "^2.5.0",
         "body-parser": "^1.18.2",
         "crypto": "^1.0.1",

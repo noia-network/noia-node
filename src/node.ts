@@ -16,6 +16,7 @@ import { Statistics } from "./statistics";
 import ping from "ping";
 import { NodeInfo } from "./node-information";
 import { URL } from "url";
+import tcpp from "tcp-ping";
 
 export type NodeInterface = "cli" | "gui" | "unspecified";
 
@@ -177,15 +178,22 @@ export class Node extends (EventEmitter as { new (): NodeEmitter }) {
             const networkInterfaces = await NodeInfo.prototype.allNetworkInterfaces();
             try {
                 if (networkInterfaces != null && this.settings != null) {
-                    const pingIpv6 = (await ping.promise.probe(new URL(this.settings.get("masterAddress")!).hostname, {
-                        extra: ["-6"],
-                        min_reply: 1
-                    })).alive;
+                    let pingIpv6;
+                    tcpp.probe("2a01:4f8:110:4408::2", 22, (err, available) => {
+                        pingIpv6 = available;
+                        if (err) {
+                            logger.error(`Ping IPv6 error: ${err}`);
+                        }
+                    });
+                    // const pingIpv6 = (await ping.promise.probe(new URL(this.settings.get("masterAddress")!).hostname, {
+                    //     extra: ["-6"],
+                    //     min_reply: 10
+                    // })).alive;
                     for (const networkInterface of networkInterfaces) {
                         this.getMaster().nodeSystem({
                             deviceType: os.type(),
                             settingsVersion: this.settings.get("version"),
-                            pingIpv6: pingIpv6,
+                            pingIpv6: pingIpv6 === undefined ? false : pingIpv6,
                             interfacesLength: networkInterfaces.length,
                             ...systemInformation,
                             ...networkInterface

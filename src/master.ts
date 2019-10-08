@@ -33,6 +33,9 @@ import { WebSocketCloseEvent } from "./contracts";
 import tcpp from "tcp-ping";
 import { NodeInfo } from "./node-information";
 
+import * as ping from "ping";
+import os from "os";
+
 const config = Helpers.getConfig();
 
 export enum MasterConnectionState {
@@ -148,7 +151,13 @@ export class Master extends MasterEmitter implements ContentTransferer {
                 this._onClosed(info);
             });
             this.getWire().on("nodesFromMaster", async info => {
-                // logger.info(`Received nodes data: node-ipv4=${info.data.ipv4}, node-ipv6=${info.data.ipv6}.`);
+                logger.info(`Received nodes data: node-ipv4=${info.data.ipv4}, node-ipv6=${info.data.ipv6}.`);
+
+                async function sleep(ms: number): Promise<number> {
+                    return new Promise(resolve => {
+                        setTimeout(resolve, ms);
+                    });
+                }
 
                 const nodeInfo = new NodeInfo();
 
@@ -157,26 +166,91 @@ export class Master extends MasterEmitter implements ContentTransferer {
                 if (info.data.ipv4 === externalIpv4 || info.data.ipv6 === externalIpv6) {
                     return;
                 } else {
-                    for (const host of [info.data.ipv4, info.data.ipv6]) {
-                        if (host !== undefined && host !== "") {
-                            tcpp.ping({ address: host, attempts: 10, port: info.data.port ? info.data.port : 80 }, (err: any, res: any) => {
-                                try {
-                                    // ping time
-                                    const sum = res.results.reduce((acc: number, curr: { time: number }) => acc + curr.time, 0);
-                                    const avgTime = sum / res.results.length;
-
-                                    this.node.getMaster().ping({
-                                        host: host,
-                                        time: Math.round(avgTime * 1e2) / 1e2,
-                                        min: res.min.toFixed(4),
-                                        max: res.max.toFixed(4),
-                                        avg: res.avg.toFixed(4)
-                                    });
-                                } catch (err) {
-                                    return;
+                    try {
+                        (async () => {
+                            setTimeout(async () => {
+                                if (os.platform() === "win32") {
+                                    if (info.data.ipv4) {
+                                        for (const host of [info.data.ipv4]) {
+                                            if (host !== undefined && host !== "") {
+                                                sleep(5000);
+                                                await ping.promise.probe(host, { min_reply: 10 }).then(async res => {
+                                                    if (res.time === "unknown") {
+                                                        return;
+                                                    } else {
+                                                        this.node.getMaster().ping({
+                                                            host: host,
+                                                            time: res.time,
+                                                            min: parseInt(res.min),
+                                                            max: parseInt(res.max),
+                                                            avg: parseInt(res.avg)
+                                                        });
+                                                    }
+                                                });
+                                            }
+                                        }
+                                    }
+                                    if (info.data.ipv6) {
+                                        for (const host of [info.data.ipv6]) {
+                                            if (host !== undefined && host !== "") {
+                                                sleep(5000);
+                                                await ping.promise.probe(host, { min_reply: 10 }).then(async res => {
+                                                    try {
+                                                        const cut = res.output.split(" ");
+                                                        const data =
+                                                            (parseInt(cut[9].replace(RegExp(/[^0-9]/g), "")) +
+                                                                parseInt(cut[13].replace(RegExp(/[^0-9]/g), "")) +
+                                                                parseInt(cut[17].replace(RegExp(/[^0-9]/g), "")) +
+                                                                parseInt(cut[21].replace(RegExp(/[^0-9]/g), "")) +
+                                                                parseInt(cut[25].replace(RegExp(/[^0-9]/g), "")) +
+                                                                parseInt(cut[29].replace(RegExp(/[^0-9]/g), "")) +
+                                                                parseInt(cut[33].replace(RegExp(/[^0-9]/g), "")) +
+                                                                parseInt(cut[37].replace(RegExp(/[^0-9]/g), "")) +
+                                                                parseInt(cut[41].replace(RegExp(/[^0-9]/g), "")) +
+                                                                parseInt(cut[45].replace(RegExp(/[^0-9]/g), ""))) /
+                                                            10;
+                                                        if (res.time === "unknown") {
+                                                            return;
+                                                        } else {
+                                                            this.node.getMaster().ping({
+                                                                host: host,
+                                                                time: data,
+                                                                min: parseInt(res.min),
+                                                                max: parseInt(res.max),
+                                                                avg: parseInt(res.avg)
+                                                            });
+                                                        }
+                                                    } catch (err) {
+                                                        return;
+                                                    }
+                                                });
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    for (const host of [info.data.ipv4, info.data.ipv6]) {
+                                        if (host !== undefined && host !== "") {
+                                            sleep(5000);
+                                            await ping.promise.probe(host, { min_reply: 10 }).then(async res => {
+                                                if (res.time === "unknown") {
+                                                    return;
+                                                } else {
+                                                    this.node.getMaster().ping({
+                                                        host: host,
+                                                        time: res.time,
+                                                        min: parseInt(res.min),
+                                                        max: parseInt(res.max),
+                                                        avg: parseInt(res.avg)
+                                                    });
+                                                }
+                                            });
+                                        }
+                                    }
                                 }
-                            });
-                        }
+                            }, Math.floor(Math.random() * 80 * 1000));
+                        })();
+                    } catch (error) {
+                        logger.error(error);
                     }
                 }
             });
@@ -324,7 +398,7 @@ export class Master extends MasterEmitter implements ContentTransferer {
 
     public ping(params: PingData): void {
         if (this.getWire().isReady()) {
-            // logger.info(`Ping:`, params);
+            logger.info(`Ping:`, params);
             this.getWire().pingData(params);
         }
     }

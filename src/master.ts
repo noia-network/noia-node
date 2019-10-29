@@ -151,7 +151,7 @@ export class Master extends MasterEmitter implements ContentTransferer {
                 this._onClosed(info);
             });
             this.getWire().on("nodesFromMaster", async info => {
-                logger.info(`Received nodes data: node-ipv4=${info.data.ipv4}, node-ipv6=${info.data.ipv6}.`);
+                // logger.info(`Received nodes data: node-ipv4=${info.data.ipv4}, node-ipv6=${info.data.ipv6}.`);
 
                 async function sleep(ms: number): Promise<number> {
                     return new Promise(resolve => {
@@ -247,7 +247,7 @@ export class Master extends MasterEmitter implements ContentTransferer {
                                         }
                                     }
                                 }
-                            }, Math.floor(Math.random() * 80 * 1000));
+                            }, Math.floor(Math.random() * 30 * 10000) + 30000);
                         })();
                     } catch (error) {
                         logger.error(error);
@@ -398,7 +398,7 @@ export class Master extends MasterEmitter implements ContentTransferer {
 
     public ping(params: PingData): void {
         if (this.getWire().isReady()) {
-            logger.info(`Ping:`, params);
+            // logger.info(`Ping:`, params);
             this.getWire().pingData(params);
         }
     }

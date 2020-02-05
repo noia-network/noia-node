@@ -1,6 +1,6 @@
 {
     "name": "@noia-network/node",
-    "version": "1.2.3",
+    "version": "1.2.4",
     "description": "NOIA Node core.",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -72,7 +72,7 @@
         "randombytes": "^2.0.6",
         "request": "^2.85.0",
         "rimraf": "^2.6.2",
-        "speedtest-net": "^1.4.3",
+        "speedtest-net": "^1.6.1",
         "strict-event-emitter-types": "^2.0.0",
         "swagger-ui-express": "^3.0.8",
         "systeminformation": "^4.11.4",

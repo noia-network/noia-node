@@ -78,7 +78,7 @@
         "speedtest-net": "^1.6.1",
         "strict-event-emitter-types": "^2.0.0",
         "swagger-ui-express": "^3.0.8",
-        "systeminformation": "^4.11.4",
+        "systeminformation": "^5.3.1",
         "tcp-ping": "^0.1.1",
         "tslib": "^1.9.2",
         "winston": "^2.4.1",
